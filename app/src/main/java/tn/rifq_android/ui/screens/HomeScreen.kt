@@ -1,24 +1,22 @@
 package tn.rifq_android.ui.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tn.rifq_android.viewmodel.AuthUiState
 import tn.rifq_android.viewmodel.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: AuthViewModel, onLogout: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
@@ -33,32 +31,104 @@ fun HomeScreen(viewModel: AuthViewModel, onLogout: () -> Unit) {
         }
     }
 
-    Scaffold { paddingValues ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Rifq") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Home - Authenticated",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(vertical = 16.dp)
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Icon(
+                imageVector = Icons.Default.Home,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
-                text = "Welcome! You are now logged in.",
+                text = "Welcome to Rifq!",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Your pet care companion",
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 24.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Button(
-                onClick = { viewModel.logout() },
-                enabled = uiState !is AuthUiState.Loading,
-                modifier = Modifier.padding(top = 8.dp)
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
             ) {
-                Text("Logout")
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Find Pet Services",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Search for veterinarians, pet sitters, and more",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { /* TODO: Navigate to search */ },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Browse Services")
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Navigate to Profile to manage your pets and settings",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
 
             when (val state = uiState) {
                 is AuthUiState.Loading -> {

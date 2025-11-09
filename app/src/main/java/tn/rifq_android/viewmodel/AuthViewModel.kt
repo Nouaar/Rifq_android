@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.AuthRepository
 import tn.rifq_android.data.storage.TokenManager
+import tn.rifq_android.data.storage.UserManager
 import tn.rifq_android.model.LoginRequest
 import tn.rifq_android.model.RegisterRequest
 import tn.rifq_android.model.VerifyEmailRequest
@@ -21,7 +22,8 @@ sealed class AuthUiState {
 
 class AuthViewModel(
     private val repository: AuthRepository,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val userManager: UserManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
@@ -102,11 +104,14 @@ class AuthViewModel(
                 val response = repository.login(LoginRequest(email, password))
                 if (response.isSuccessful) {
                     val body = response.body()
-                    if (body != null && body.tokens != null) {
+                    if (body != null && body.tokens != null && body.user != null) {
                         tokenManager.saveTokens(
                             accessToken = body.tokens.accessToken,
                             refreshToken = body.tokens.refreshToken
                         )
+                        // Use user id if available, otherwise use email as identifier
+                        val userId = body.user.id ?: body.user.email
+                        userManager.saveUserId(userId)
                         _uiState.value = AuthUiState.Success("Login successful!")
                     } else {
                         _uiState.value = AuthUiState.Error("Invalid server response.")
@@ -125,6 +130,7 @@ class AuthViewModel(
         viewModelScope.launch {
             try {
                 tokenManager.clearTokens()
+                userManager.clearUserId()
                 _uiState.value = AuthUiState.Success("Logged out successfully.")
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error("Failed to logout.")

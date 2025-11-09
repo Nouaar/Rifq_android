@@ -15,7 +15,6 @@ import androidx.navigation.navArgument
 import kotlinx.coroutines.flow.firstOrNull
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.ui.components.SplashScreen
-import tn.rifq_android.ui.screens.HomeScreen
 import tn.rifq_android.ui.screens.auth.LoginScreen
 import tn.rifq_android.ui.screens.auth.RegisterScreen
 import tn.rifq_android.ui.screens.auth.VerifyEmailScreen
@@ -26,7 +25,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val VERIFY = "verify"
-    const val HOME = "home"
+    const val MAIN = "main"
 }
 
 @Composable
@@ -42,7 +41,7 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         val token = tokenManager.getAccessToken().firstOrNull()
         startDestination = if (!token.isNullOrBlank()) {
-            Routes.HOME
+            Routes.MAIN
         } else {
             Routes.LOGIN
         }
@@ -61,7 +60,7 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
                 viewModel = authViewModel,
                 onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -94,9 +93,9 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
             )
         }
 
-        composable(Routes.HOME) {
-            HomeScreen(
-                viewModel = authViewModel,
+        composable(Routes.MAIN) {
+            MainScreen(
+                context = context,
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }

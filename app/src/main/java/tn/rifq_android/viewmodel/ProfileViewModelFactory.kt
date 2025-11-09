@@ -4,20 +4,19 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import tn.rifq_android.data.api.RetrofitInstance
-import tn.rifq_android.data.repository.AuthRepository
+import tn.rifq_android.data.repository.ProfileRepository
 import tn.rifq_android.data.storage.TokenManager
-import tn.rifq_android.data.storage.UserManager
 
-class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
-    private val repository = AuthRepository(RetrofitInstance.api)
+class ProfileViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    private val repository = ProfileRepository(RetrofitInstance.profileApi)
     private val tokenManager = TokenManager(context.applicationContext)
-    private val userManager = UserManager(context.applicationContext)
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
-            return AuthViewModel(repository, tokenManager, userManager) as T
+        if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
+            return ProfileViewModel(repository, tokenManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
