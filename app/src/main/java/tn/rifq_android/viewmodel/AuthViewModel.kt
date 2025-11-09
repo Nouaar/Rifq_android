@@ -1,0 +1,138 @@
+package tn.rifq_android.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import tn.rifq_android.data.repository.AuthRepository
+import tn.rifq_android.data.storage.TokenManager
+import tn.rifq_android.model.LoginRequest
+import tn.rifq_android.model.RegisterRequest
+import tn.rifq_android.model.VerifyEmailRequest
+import tn.rifq_android.util.ValidationUtil
+
+sealed class AuthUiState {
+    object Idle : AuthUiState()
+    object Loading : AuthUiState()
+    data class Success(val message: String) : AuthUiState()
+    data class Error(val message: String) : AuthUiState()
+}
+
+class AuthViewModel(
+    private val repository: AuthRepository,
+    private val tokenManager: TokenManager
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
+    val uiState: StateFlow<AuthUiState> = _uiState
+
+    fun register(email: String, password: String, name: String, role: String) {
+        // Validate input
+        val validation = ValidationUtil.validateRegistrationInput(email, password, name, role)
+        if (!validation.isValid) {
+            _uiState.value = AuthUiState.Error(validation.errorMessage ?: "Invalid input")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.register(
+                    RegisterRequest(
+                        email = email,
+                        password = password,
+                        name = name,
+                        role = role
+                    )
+                )
+                if (response.isSuccessful) {
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Registration successful! Check your email for verification code."
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Registration failed.")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun verifyEmail(email: String, code: String) {
+        // Validate input
+        val validation = ValidationUtil.validateVerificationInput(code)
+        if (!validation.isValid) {
+            _uiState.value = AuthUiState.Error(validation.errorMessage ?: "Invalid code")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.verifyEmail(
+                    VerifyEmailRequest(email = email, code = code)
+                )
+                if (response.isSuccessful) {
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Email verified successfully!"
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Verification failed.")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun login(email: String, password: String) {
+        // Validate input
+        val validation = ValidationUtil.validateLoginInput(email, password)
+        if (!validation.isValid) {
+            _uiState.value = AuthUiState.Error(validation.errorMessage ?: "Invalid input")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.login(LoginRequest(email, password))
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.tokens != null) {
+                        tokenManager.saveTokens(
+                            accessToken = body.tokens.accessToken,
+                            refreshToken = body.tokens.refreshToken
+                        )
+                        _uiState.value = AuthUiState.Success("Login successful!")
+                    } else {
+                        _uiState.value = AuthUiState.Error("Invalid server response.")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Login failed.")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                tokenManager.clearTokens()
+                _uiState.value = AuthUiState.Success("Logged out successfully.")
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error("Failed to logout.")
+            }
+        }
+    }
+
+    fun resetState() {
+        _uiState.value = AuthUiState.Idle
+    }
+}
