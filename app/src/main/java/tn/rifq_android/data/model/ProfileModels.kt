@@ -1,4 +1,4 @@
-package tn.rifq_android.model
+package tn.rifq_android.data.model
 
 import com.squareup.moshi.Json
 

@@ -1,10 +1,10 @@
 package tn.rifq_android.data.repository
 
 import tn.rifq_android.data.api.AuthApi
-import tn.rifq_android.model.AuthResponse
-import tn.rifq_android.model.LoginRequest
-import tn.rifq_android.model.RegisterRequest
-import tn.rifq_android.model.VerifyEmailRequest
+import tn.rifq_android.data.model.AuthResponse
+import tn.rifq_android.data.model.LoginRequest
+import tn.rifq_android.data.model.RegisterRequest
+import tn.rifq_android.data.model.VerifyEmailRequest
 import retrofit2.Response
 
 class AuthRepository(private val api: AuthApi) {

@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.ProfileRepository
 import tn.rifq_android.data.storage.TokenManager
-import tn.rifq_android.model.*
+import tn.rifq_android.data.model.*
 import tn.rifq_android.util.JwtDecoder
 
 sealed class ProfileUiState {

@@ -1,4 +1,4 @@
-package tn.rifq_android.model
+package tn.rifq_android.data.model
 
 enum class UserRole(val value: String) {
     OWNER("owner"),

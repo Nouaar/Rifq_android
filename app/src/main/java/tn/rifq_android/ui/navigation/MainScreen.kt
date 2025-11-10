@@ -16,8 +16,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import tn.rifq_android.ui.profile.ProfileScreen
-import tn.rifq_android.ui.screens.HomeScreen
+import tn.rifq_android.ui.screens.profile.ProfileScreen
+import tn.rifq_android.ui.screens.home.HomeScreen
 import tn.rifq_android.viewmodel.AuthViewModel
 import tn.rifq_android.viewmodel.AuthViewModelFactory
 

@@ -1,4 +1,4 @@
-package tn.rifq_android.ui.profile
+package tn.rifq_android.ui.screens.profile
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

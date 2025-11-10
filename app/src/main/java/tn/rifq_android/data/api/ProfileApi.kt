@@ -2,7 +2,7 @@ package tn.rifq_android.data.api
 
 import retrofit2.Response
 import retrofit2.http.*
-import tn.rifq_android.model.*
+import tn.rifq_android.data.model.*
 
 interface ProfileApi {
 

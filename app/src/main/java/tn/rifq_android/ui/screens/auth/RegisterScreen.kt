@@ -7,7 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import tn.rifq_android.model.UserRole
+import tn.rifq_android.data.model.UserRole
 import tn.rifq_android.ui.components.InputTextField
 import tn.rifq_android.ui.components.PrimaryButton
 import tn.rifq_android.viewmodel.AuthUiState

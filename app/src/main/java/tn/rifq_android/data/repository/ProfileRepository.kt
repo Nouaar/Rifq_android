@@ -2,7 +2,7 @@ package tn.rifq_android.data.repository
 
 import retrofit2.Response
 import tn.rifq_android.data.api.ProfileApi
-import tn.rifq_android.model.*
+import tn.rifq_android.data.model.*
 
 class ProfileRepository(private val api: ProfileApi) {
 
