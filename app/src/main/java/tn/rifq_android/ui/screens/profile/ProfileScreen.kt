@@ -45,6 +45,12 @@ fun ProfileScreen(
         }
     }
 
+    LaunchedEffect(uiState) {
+        if (uiState is ProfileUiState.UserDeleted) {
+            onLogout()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -248,6 +254,17 @@ fun ProfileScreen(
             }
 
             ProfileUiState.Idle -> {}
+
+            ProfileUiState.UserDeleted -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
     }
 

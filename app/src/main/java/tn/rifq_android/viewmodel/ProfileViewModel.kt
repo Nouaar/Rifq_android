@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.ProfileRepository
 import tn.rifq_android.data.storage.TokenManager
+import tn.rifq_android.data.storage.UserManager
 import tn.rifq_android.data.model.*
 import tn.rifq_android.util.JwtDecoder
 
@@ -16,6 +17,7 @@ sealed class ProfileUiState {
     object Loading : ProfileUiState()
     data class Success(val user: User, val pets: List<Pet>) : ProfileUiState()
     data class Error(val message: String) : ProfileUiState()
+    object UserDeleted : ProfileUiState()
 }
 
 sealed class ProfileAction {
@@ -27,7 +29,8 @@ sealed class ProfileAction {
 
 class ProfileViewModel(
     private val repository: ProfileRepository,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val userManager: UserManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
@@ -71,9 +74,15 @@ class ProfileViewModel(
                         _uiState.value = ProfileUiState.Error("No profile data received")
                     }
                 } else {
-                    _uiState.value = ProfileUiState.Error(
-                        response.errorBody()?.string() ?: "Failed to load profile"
-                    )
+                    if (response.code() == 404) {
+                        tokenManager.clearTokens()
+                        userManager.clearUserId()
+                        _uiState.value = ProfileUiState.UserDeleted
+                    } else {
+                        _uiState.value = ProfileUiState.Error(
+                            response.errorBody()?.string() ?: "Failed to load profile"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = ProfileUiState.Error(
