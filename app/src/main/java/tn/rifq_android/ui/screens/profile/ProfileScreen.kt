@@ -144,7 +144,7 @@ fun ProfileScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             FilledTonalButton(
-                                onClick = { /* TODO: Navigate to add pet */ }
+                                onClick = {  }
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
@@ -180,7 +180,7 @@ fun ProfileScreen(
                         items(state.pets) { pet ->
                             PetRow(
                                 pet = pet,
-                                onEdit = { /* TODO */ },
+                                onEdit = {  },
                                 onDelete = {
                                     petToDelete = pet
                                     showDeleteDialog = true

@@ -25,7 +25,6 @@ object RetrofitInstance {
     private val authInterceptor = Interceptor { chain ->
         val requestBuilder = chain.request().newBuilder()
 
-        // Add token if available
         tokenManager?.let { manager ->
             runBlocking {
                 val token = manager.getAccessToken().firstOrNull()

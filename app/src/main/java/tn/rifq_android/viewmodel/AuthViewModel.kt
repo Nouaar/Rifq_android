@@ -30,7 +30,6 @@ class AuthViewModel(
     val uiState: StateFlow<AuthUiState> = _uiState
 
     fun register(email: String, password: String, name: String, role: String) {
-        // Validate input
         val validation = ValidationUtil.validateRegistrationInput(email, password, name, role)
         if (!validation.isValid) {
             _uiState.value = AuthUiState.Error(validation.errorMessage ?: "Invalid input")
@@ -63,7 +62,6 @@ class AuthViewModel(
     }
 
     fun verifyEmail(email: String, code: String) {
-        // Validate input
         val validation = ValidationUtil.validateVerificationInput(code)
         if (!validation.isValid) {
             _uiState.value = AuthUiState.Error(validation.errorMessage ?: "Invalid code")
@@ -91,7 +89,6 @@ class AuthViewModel(
     }
 
     fun login(email: String, password: String) {
-        // Validate input
         val validation = ValidationUtil.validateLoginInput(email, password)
         if (!validation.isValid) {
             _uiState.value = AuthUiState.Error(validation.errorMessage ?: "Invalid input")
@@ -109,7 +106,6 @@ class AuthViewModel(
                             accessToken = body.tokens.accessToken,
                             refreshToken = body.tokens.refreshToken
                         )
-                        // Use user id if available, otherwise use email as identifier
                         val userId = body.user.id ?: body.user.email
                         userManager.saveUserId(userId)
                         _uiState.value = AuthUiState.Success("Login successful!")

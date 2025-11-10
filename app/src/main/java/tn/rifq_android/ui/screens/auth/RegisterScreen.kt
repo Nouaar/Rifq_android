@@ -69,7 +69,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Role selection with checkboxes
             Text(
                 text = "What do you want to be?",
                 style = MaterialTheme.typography.titleMedium,

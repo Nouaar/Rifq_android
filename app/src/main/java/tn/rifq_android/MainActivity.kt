@@ -12,7 +12,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize RetrofitInstance with context for token management
         RetrofitInstance.initialize(applicationContext)
 
         setContent {

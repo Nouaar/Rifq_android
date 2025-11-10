@@ -25,7 +25,6 @@ fun SettingsSheet(
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
         ) {
-            // Header
             Text(
                 text = "Settings",
                 style = MaterialTheme.typography.headlineSmall,
@@ -34,7 +33,6 @@ fun SettingsSheet(
 
             HorizontalDivider()
 
-            // Settings Options
             SettingsRowWithSwitch(
                 title = "Notifications",
                 subtitle = "Receive push notifications",
@@ -58,31 +56,29 @@ fun SettingsSheet(
 
             HorizontalDivider()
 
-            // Additional Settings
             SettingsRow(
                 title = "Change Password",
-                onClick = { /* TODO: Navigate to change password */ }
+                onClick = {  }
             )
 
             SettingsRow(
                 title = "Privacy Policy",
-                onClick = { /* TODO: Navigate to privacy policy */ }
+                onClick = {  }
             )
 
             SettingsRow(
                 title = "Terms of Service",
-                onClick = { /* TODO: Navigate to terms */ }
+                onClick = {  }
             )
 
             SettingsRow(
                 title = "About",
                 subtitle = "Version 1.0.0",
-                onClick = { /* TODO: Show about dialog */ }
+                onClick = {  }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Close Button
             Button(
                 onClick = onDismiss,
                 modifier = Modifier

@@ -35,7 +35,6 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
     val authViewModel: AuthViewModel = viewModel(factory = factory)
     val tokenManager = remember { TokenManager(context) }
 
-    // Determine start destination based on stored token
     var startDestination by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -47,9 +46,7 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
         }
     }
 
-    // Wait until we've determined the start destination
     if (startDestination == null) {
-        // Show splash screen while checking for stored token
         SplashScreen()
         return
     }

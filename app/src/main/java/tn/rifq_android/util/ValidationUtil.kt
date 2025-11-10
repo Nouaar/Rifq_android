@@ -7,7 +7,6 @@ object ValidationUtil {
     }
 
     fun isValidPassword(password: String): Boolean {
-        // At least 8 characters
         return password.length >= 8
     }
 
@@ -16,7 +15,6 @@ object ValidationUtil {
     }
 
     fun isValidVerificationCode(code: String): Boolean {
-        // Assuming verification code is 6 digits
         return code.matches(Regex("^\\d{6}$"))
     }
 
