@@ -1,18 +1,31 @@
 package tn.rifq_android.ui.screens.auth
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import tn.rifq_android.data.model.UserRole
-import tn.rifq_android.ui.components.InputTextField
-import tn.rifq_android.ui.components.PrimaryButton
+import androidx.compose.ui.unit.sp
+import tn.rifq_android.R
+import tn.rifq_android.ui.theme.LoginBackground
+import tn.rifq_android.ui.theme.OrangePrimary
 import tn.rifq_android.viewmodel.AuthUiState
 import tn.rifq_android.viewmodel.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
@@ -20,120 +33,214 @@ fun RegisterScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var selectedRole by remember { mutableStateOf<UserRole?>(null) }
+    var name by remember { mutableStateOf(TextFieldValue("")) }
+    var email by remember { mutableStateOf(TextFieldValue("")) }
+    var password by remember { mutableStateOf(TextFieldValue("")) }
+    var confirmPassword by remember { mutableStateOf(TextFieldValue("")) }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
-            onNavigateToVerify(email.trim())
+            onNavigateToVerify(email.text.trim())
             viewModel.resetState()
         }
     }
 
-    Scaffold { paddingValues ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LoginBackground)
+    ) {
         Column(
             modifier = Modifier
-                .padding(paddingValues)
-                .padding(16.dp),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Register",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(vertical = 16.dp)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // App Logo
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "App Logo",
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 16.dp)
             )
 
-            InputTextField(
+            // App Name
+            Text(
+                text = "RifQ",
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp,
+                color = Color.Black
+            )
+
+            Text(
+                text = "Create Your Account",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // Name TextField
+            OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = "Name",
-                keyboardType = KeyboardType.Text
+                label = { Text("Full Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading
             )
 
-            InputTextField(
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Email TextField
+            OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = "Email",
-                keyboardType = KeyboardType.Email
+                label = { Text("Email address") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading
             )
 
-            InputTextField(
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Password TextField
+            OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = "Password",
-                isPassword = true,
-                keyboardType = KeyboardType.Password
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = "What do you want to be?",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+            // Confirm Password TextField
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = { Text("Confirm Password") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading,
+                isError = confirmPassword.text.isNotEmpty() && password.text != confirmPassword.text
             )
 
-            UserRole.entries.forEach { role ->
-                Row(
+            if (confirmPassword.text.isNotEmpty() && password.text != confirmPassword.text) {
+                Text(
+                    text = "Passwords do not match",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = selectedRole == role,
-                        onCheckedChange = { isChecked ->
-                            selectedRole = if (isChecked) role else null
-                        }
-                    )
-                    Text(
-                        text = role.value.replaceFirstChar { it.uppercase() },
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
+                        .padding(start = 16.dp, top = 4.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            PrimaryButton(
-                text = "Register",
-                onClick = {
-                    viewModel.register(
-                        email.trim(),
-                        password,
-                        name,
-                        selectedRole?.value ?: ""
-                    )
-                },
-                enabled = uiState !is AuthUiState.Loading
-            )
-
-            PrimaryButton(
-                text = "Back",
-                onClick = onNavigateBack,
-                enabled = uiState !is AuthUiState.Loading
-            )
-
+            // Error Message
             when (val state = uiState) {
-                is AuthUiState.Loading -> {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    CircularProgressIndicator()
-                }
                 is AuthUiState.Error -> {
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = state.message,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
                 else -> {}
             }
+
+            // Register Button
+            Button(
+                onClick = {
+                    viewModel.register(
+                        email.text.trim(),
+                        password.text,
+                        name.text,
+                        "owner"
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDA866C)),
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading &&
+                         name.text.isNotBlank() &&
+                         email.text.isNotBlank() &&
+                         password.text.isNotBlank() &&
+                         confirmPassword.text.isNotBlank() &&
+                         password.text == confirmPassword.text
+            ) {
+                if (uiState is AuthUiState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text(text = "SIGN UP", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Back to Login
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(text = "Already have an account?", color = Color.Gray)
+                TextButton(onClick = onNavigateBack) {
+                    Text("Sign In", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Divider
+            HorizontalDivider(
+                color = Color.LightGray,
+                thickness = 1.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Google Sign Up Button
+            OutlinedButton(
+                onClick = { /* TODO: Google Sign-Up */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(50.dp),
+                border = ButtonDefaults.outlinedButtonBorder(enabled = uiState !is AuthUiState.Loading).copy(
+                    brush = SolidColor(OrangePrimary)
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = OrangePrimary
+                ),
+                enabled = uiState !is AuthUiState.Loading
+            ) {
+                Text(
+                    text = "SIGN UP WITH GOOGLE",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

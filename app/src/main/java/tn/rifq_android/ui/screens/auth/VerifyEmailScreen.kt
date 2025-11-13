@@ -1,20 +1,27 @@
 package tn.rifq_android.ui.screens.auth
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import tn.rifq_android.ui.components.InputTextField
-import tn.rifq_android.ui.components.PrimaryButton
+import androidx.compose.ui.unit.sp
+import tn.rifq_android.R
+import tn.rifq_android.ui.theme.LoginBackground
+import tn.rifq_android.ui.theme.OrangePrimary
 import tn.rifq_android.viewmodel.AuthUiState
 import tn.rifq_android.viewmodel.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VerifyEmailScreen(
     viewModel: AuthViewModel,
@@ -22,7 +29,7 @@ fun VerifyEmailScreen(
     onVerified: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var code by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf(TextFieldValue("")) }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
@@ -34,61 +41,123 @@ fun VerifyEmailScreen(
         }
     }
 
-    Scaffold { paddingValues ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LoginBackground)
+            .padding(horizontal = 32.dp, vertical = 16.dp)
+    ) {
         Column(
             modifier = Modifier
-                .padding(paddingValues)
-                .padding(16.dp),
+                .align(Alignment.Center)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
+            // App Logo
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "App Logo",
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 16.dp)
+            )
+
+            // App Name
             Text(
-                text = "Verify Email",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(vertical = 16.dp)
+                text = "RifQ",
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp,
+                color = Color.Black
+            )
+
+            Text(
+                text = "Verify Your Email",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
             )
 
             Text(
                 text = "Enter the verification code sent to:",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 4.dp)
+                fontSize = 14.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
             )
 
             Text(
                 text = email,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 16.dp)
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = OrangePrimary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            InputTextField(
+            // Verification Code TextField
+            OutlinedTextField(
                 value = code,
-                onValueChange = { if (it.length <= 6) code = it },
-                label = "Verification Code",
-                keyboardType = KeyboardType.Number
+                onValueChange = { if (it.text.length <= 6) code = it },
+                label = { Text("Verification Code") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading,
+                placeholder = { Text("Enter 6-digit code") }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            PrimaryButton(
-                text = "Verify",
-                onClick = { viewModel.verifyEmail(email, code.trim()) },
-                enabled = uiState !is AuthUiState.Loading && code.length == 6
-            )
-
+            // Error Message
             when (val state = uiState) {
-                is AuthUiState.Loading -> {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    CircularProgressIndicator()
-                }
                 is AuthUiState.Error -> {
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = state.message,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
                 else -> {}
+            }
+
+            // Verify Button
+            Button(
+                onClick = {
+                    viewModel.verifyEmail(email, code.text.trim())
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDA866C)),
+                shape = RoundedCornerShape(50.dp),
+                enabled = uiState !is AuthUiState.Loading && code.text.length == 6
+            ) {
+                if (uiState is AuthUiState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text(text = "VERIFY", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Resend Code
+            TextButton(
+                onClick = { /* TODO: Resend verification code */ },
+                enabled = uiState !is AuthUiState.Loading
+            ) {
+                Text(
+                    "Didn't receive the code? Resend",
+                    color = OrangePrimary,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }

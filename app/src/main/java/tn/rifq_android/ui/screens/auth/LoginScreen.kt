@@ -65,12 +65,9 @@ fun LoginScreen(
                     .padding(bottom = 16.dp)
             )
 
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // App Name
             Text(
-                text = "Rifq",
+                text = "RifQ",
                 fontWeight = FontWeight.Bold,
                 fontSize = 28.sp,
                 color = Color.Black
