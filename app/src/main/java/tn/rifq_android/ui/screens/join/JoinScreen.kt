@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 
 data class ServiceOption(
@@ -56,7 +57,12 @@ fun JoinScreen(navController: NavHostController) {
     )
 
     Scaffold(
-        topBar = { JoinTopBar(navController) },
+        topBar = {
+            TopNavBar(
+                title = "Join Platform",
+                showBackButton = false
+            )
+        },
         containerColor = PageBackground
     ) { paddingValues ->
         LazyColumn(
@@ -95,23 +101,6 @@ fun JoinScreen(navController: NavHostController) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun JoinTopBar(navController: NavHostController) {
-    TopAppBar(
-        title = {
-            Text(
-                "Join Platform",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
-            )
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
 
 @Composable
 private fun ServiceCard(option: ServiceOption) {

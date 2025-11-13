@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 
 data class ChatMessage(

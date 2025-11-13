@@ -1,5 +1,6 @@
-package tn.rifq_android.viewmodel
+package tn.rifq_android.viewmodel.pet
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,10 @@ class PetViewModel(
     private val _uiState = MutableStateFlow<PetUiState>(PetUiState.Idle)
     val uiState: StateFlow<PetUiState> = _uiState
 
+    companion object {
+        private const val TAG = "PetViewModel"
+    }
+
     private suspend fun getUserIdFromToken(): String? {
         val token = tokenManager.getAccessToken().firstOrNull()
         return if (token.isNullOrBlank()) {
@@ -45,7 +50,7 @@ class PetViewModel(
         color: String? = null,
         weight: Double? = null,
         height: Double? = null,
-        photo: String? = null,
+        photoFile: java.io.File? = null,
         microchipId: String? = null
     ) {
         viewModelScope.launch {
@@ -57,7 +62,10 @@ class PetViewModel(
                     return@launch
                 }
 
-                val request = AddPetRequest(
+                Log.d(TAG, "Adding pet with photo file: ${photoFile?.name}")
+
+                val response = repository.addPet(
+                    ownerId = userId,
                     name = name,
                     species = species,
                     breed = breed,
@@ -66,20 +74,48 @@ class PetViewModel(
                     color = color,
                     weight = weight,
                     height = height,
-                    photo = photo,
-                    microchipId = microchipId
+                    microchipId = microchipId,
+                    photoFile = photoFile
                 )
 
-                val response = repository.addPet(userId, request)
+                Log.d(TAG, "Response code: ${response.code()}")
+
                 if (response.isSuccessful) {
                     val pet = response.body()
+                    Log.d(TAG, "Pet added successfully: ${pet?.id}, photo: ${pet?.photo}")
+                    // Clean up temp file
+                    photoFile?.delete()
                     _uiState.value = PetUiState.Success(pet, "Pet added successfully!")
                 } else {
-                    _uiState.value = PetUiState.Error(
-                        response.errorBody()?.string() ?: "Failed to add pet"
-                    )
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Failed to add pet: $errorBody")
+                    // Clean up temp file
+                    photoFile?.delete()
+
+                    // Parse error message for better user feedback
+                    val errorMessage = when {
+                        errorBody?.contains("duplicate", ignoreCase = true) == true ||
+                        errorBody?.contains("already exists", ignoreCase = true) == true ||
+                        errorBody?.contains("microchip", ignoreCase = true) == true -> {
+                            "This microchip ID is already registered. Please use a unique microchip ID."
+                        }
+                        errorBody?.contains("validation", ignoreCase = true) == true -> {
+                            "Invalid pet data. Please check all fields."
+                        }
+                        response.code() == 400 -> {
+                            "Invalid pet information. ${errorBody ?: "Please check your input."}"
+                        }
+                        response.code() == 409 -> {
+                            "This microchip ID is already in use. Please use a different one."
+                        }
+                        else -> errorBody ?: "Failed to add pet. Please try again."
+                    }
+
+                    _uiState.value = PetUiState.Error(errorMessage)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Exception adding pet", e)
+                photoFile?.delete()
                 _uiState.value = PetUiState.Error(
                     e.message ?: "Network error. Please try again."
                 )

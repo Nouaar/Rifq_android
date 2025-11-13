@@ -18,8 +18,8 @@ import tn.rifq_android.ui.components.SplashScreen
 import tn.rifq_android.ui.screens.auth.LoginScreen
 import tn.rifq_android.ui.screens.auth.RegisterScreen
 import tn.rifq_android.ui.screens.auth.VerifyEmailScreen
-import tn.rifq_android.viewmodel.AuthViewModel
-import tn.rifq_android.viewmodel.AuthViewModelFactory
+import tn.rifq_android.viewmodel.auth.AuthViewModel
+import tn.rifq_android.viewmodel.auth.AuthViewModelFactory
 
 object Routes {
     const val LOGIN = "login"
@@ -38,6 +38,9 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
     var startDestination by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        //splash screen duration
+        kotlinx.coroutines.delay(4500)
+
         val token = tokenManager.getAccessToken().firstOrNull()
         startDestination = if (!token.isNullOrBlank()) {
             Routes.MAIN

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 
 data class MedicalEvent(
@@ -46,8 +47,13 @@ fun MedicalHistoryScreen(navController: NavHostController) {
     val medications = emptyList<Medication>() // Replace with dynamic data from backend API
 
     Scaffold(
-        topBar = { MedicalHistoryTopBar(navController) },
-        containerColor = PageBackground
+        topBar = {
+            TopNavBar(
+                title = "Medical History",
+                navController = navController
+            )
+        },
+        containerColor = PageBackground,
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -115,32 +121,6 @@ fun MedicalHistoryScreen(navController: NavHostController) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MedicalHistoryTopBar(navController: NavHostController) {
-    TopAppBar(
-        title = {
-            Text(
-                "Medical History",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowLeft,
-                    contentDescription = "Back",
-                    tint = TextPrimary
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
 
 @Composable
 private fun TimelineItem(event: MedicalEvent, isLast: Boolean) {

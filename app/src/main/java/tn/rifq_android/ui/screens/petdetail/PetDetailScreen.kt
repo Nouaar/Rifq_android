@@ -1,6 +1,7 @@
 package tn.rifq_android.ui.screens.petdetail
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,17 +15,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.data.model.pet.Pet
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.viewmodel.PetDetailViewModel
-import tn.rifq_android.viewmodel.PetDetailViewModelFactory
-import tn.rifq_android.viewmodel.PetDetailUiState
+import tn.rifq_android.ui.utils.PetUtils
+import tn.rifq_android.util.Constants
+import tn.rifq_android.viewmodel.pet.PetDetailViewModel
+import tn.rifq_android.viewmodel.pet.PetDetailViewModelFactory
+import tn.rifq_android.viewmodel.pet.PetDetailUiState
+import tn.rifq_android.viewmodel.pet.PetActionState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,14 +93,10 @@ private fun LoadingScreen() {
 private fun ErrorScreen(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Pet Profile") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.KeyboardArrowLeft, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = HeaderBackground)
+            TopNavBar(
+                title = "Pet Profile",
+                showBackButton = true,
+                onBackClick = onBack
             )
         },
         containerColor = PageBackground
@@ -127,8 +130,36 @@ private fun ErrorScreen(message: String, onRetry: () -> Unit, onBack: () -> Unit
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PetDetailContent(navController: NavHostController, pet: Pet) {
+    val context = LocalContext.current
+    val viewModel: PetDetailViewModel = viewModel(
+        factory = PetDetailViewModelFactory(context)
+    )
+    val actionState by viewModel.actionState.collectAsState()
+
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Handle action state
+    LaunchedEffect(actionState) {
+        when (actionState) {
+            is PetActionState.Success -> {
+                val message = (actionState as PetActionState.Success).message
+                if (message.contains("deleted", ignoreCase = true)) {
+                    navController.popBackStack()
+                }
+                viewModel.resetActionState()
+            }
+            else -> {}
+        }
+    }
+
     Scaffold(
-        topBar = { PetDetailTopBar(navController) },
+        topBar = {
+            TopNavBar(
+                title = "Pet Profile",
+                navController = navController
+            )
+        },
         containerColor = PageBackground
     ) { paddingValues ->
         LazyColumn(
@@ -149,10 +180,21 @@ private fun PetDetailContent(navController: NavHostController, pet: Pet) {
                         modifier = Modifier
                             .size(140.dp)
                             .clip(CircleShape)
-                            .background(getPetColor(pet.species)),
+                            .background(PetUtils.getPetColor(pet.species)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = getPetEmoji(pet.species), fontSize = 70.sp)
+                        if (!pet.photo.isNullOrBlank()) {
+                            // Display photo from Cloudinary
+                            Image(
+                                painter = rememberAsyncImagePainter(pet.photo),
+                                contentDescription = "${pet.name}'s photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Display emoji fallback
+                            Text(text = PetUtils.getPetEmoji(pet.species), fontSize = 70.sp)
+                        }
                     }
 
                     Text(
@@ -324,138 +366,82 @@ private fun PetDetailContent(navController: NavHostController, pet: Pet) {
             }
 
             item {
-                OutlinedButton(
-                    onClick = { /* Edit pet info */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(2.dp, OrangeAccent),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = OrangeAccent
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(text = "✏️", fontSize = 18.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "EDIT PET INFO",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        letterSpacing = 0.5.sp
-                    )
+                    OutlinedButton(
+                        onClick = { showEditDialog = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(2.dp, OrangeAccent),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = OrangeAccent
+                        )
+                    ) {
+                        Text(text = "✏️", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "EDIT",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(2.dp, Color(0xFFE74C3C)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFE74C3C)
+                        )
+                    ) {
+                        Text(text = "🗑️", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "DELETE",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
         }
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PetDetailTopBar(navController: NavHostController) {
-    TopAppBar(
-        title = {
-            Text(
-                "Pet Profile",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
+        // Edit Dialog
+        if (showEditDialog) {
+            EditPetDialog(
+                pet = pet,
+                onDismiss = { showEditDialog = false },
+                onSave = { updatedPet, photoFile ->
+                    pet.id?.let { petId ->
+                        viewModel.updatePet(petId, updatedPet, photoFile)
+                    }
+                    showEditDialog = false
+                }
             )
-        },
-        navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowLeft,
-                    contentDescription = "Back",
-                    tint = TextPrimary
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
+        }
 
-@Composable
-private fun PetStatCard(statValue: String, statLabel: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = statValue,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = OrangeAccent
-            )
-            Text(
-                text = statLabel,
-                fontSize = 14.sp,
-                color = TextSecondary
+        // Delete Confirmation Dialog
+        if (showDeleteDialog) {
+            DeleteConfirmationDialog(
+                petName = pet.name,
+                onConfirm = {
+                    pet.id?.let { petId ->
+                        viewModel.deletePet(petId)
+                    }
+                    showDeleteDialog = false
+                },
+                onDismiss = { showDeleteDialog = false }
             )
         }
     }
 }
 
-@Composable
-private fun PetInfoCard(infoLabel: String, infoValue: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = infoLabel,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary
-            )
-            Text(
-                text = infoValue,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = OrangeAccent
-            )
-        }
-    }
-}
-
-// Helper functions to get pet emoji and color based on species
-private fun getPetEmoji(species: String): String {
-    return when (species.lowercase()) {
-        "dog" -> "🐕"
-        "cat" -> "🐈"
-        "bird" -> "🐦"
-        "fish" -> "🐠"
-        "rabbit" -> "🐰"
-        "hamster" -> "🐹"
-        else -> "🐾"
-    }
-}
-private fun getPetColor(species: String): Color {
-    return when (species.lowercase()) {
-        "dog" -> PetAvatarBrown
-        "cat" -> PetAvatarTan
-        "bird" -> Color(0xFFADD8E6)
-        "fish" -> Color(0xFF87CEEB)
-        "rabbit" -> Color(0xFFFFB6C1)
-        "hamster" -> Color(0xFFFFA07A)
-        else -> PetAvatarBrown
-    }
-}

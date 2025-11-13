@@ -3,7 +3,10 @@ package tn.rifq_android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import tn.rifq_android.data.api.RetrofitInstance
+import tn.rifq_android.data.storage.ThemePreference
 import tn.rifq_android.ui.navigation.AppNavGraph
 import tn.rifq_android.ui.theme.AppTheme
 
@@ -13,9 +16,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         RetrofitInstance.initialize(applicationContext)
+        val themePreference = ThemePreference(applicationContext)
 
         setContent {
-            AppTheme {
+            val isDarkMode by themePreference.isDarkMode.collectAsState(initial = false)
+
+            AppTheme(darkTheme = isDarkMode) {
                 AppNavGraph(context = applicationContext)
             }
         }

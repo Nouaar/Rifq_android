@@ -18,8 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.viewmodel.AuthUiState
-import tn.rifq_android.viewmodel.AuthViewModel
+import tn.rifq_android.viewmodel.auth.AuthUiState
+import tn.rifq_android.viewmodel.auth.AuthViewModel
 import tn.rifq_android.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

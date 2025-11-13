@@ -13,7 +13,9 @@ data class Pet(
     val weight: Double? = null,
     val height: Double? = null,
     val photo: String? = null,
-    val microchipId: String? = null
-    // Note: owner and medicalHistory fields removed - backend returns them as objects
-    // medicalHistory can be fetched separately via GET /pets/{petId}/medical-history when needed
+    val microchipId: String? = null,
+    val owner: PetOwner? = null,
+    val medicalHistory: MedicalHistory? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
 )

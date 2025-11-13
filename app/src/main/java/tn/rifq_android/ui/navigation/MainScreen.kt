@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import tn.rifq_android.ui.components.MyPetsBottomNavBar
+import tn.rifq_android.ui.components.BottomNavBar
 import tn.rifq_android.ui.screens.home.HomeScreen
 import tn.rifq_android.ui.screens.profile.ProfileScreen
 import tn.rifq_android.ui.screens.pet.AddPetScreen
@@ -31,7 +31,7 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            MyPetsBottomNavBar(navController = navController)
+            BottomNavBar(navController = navController)
         }
     ) { innerPadding ->
         NavHost(

@@ -1,5 +1,9 @@
 package tn.rifq_android.ui.screens.pet
 
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -22,11 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.viewmodel.PetViewModel
-import tn.rifq_android.viewmodel.PetViewModelFactory
-import tn.rifq_android.viewmodel.PetUiState
+import tn.rifq_android.util.rememberImagePicker
+import tn.rifq_android.viewmodel.pet.PetViewModel
+import tn.rifq_android.viewmodel.pet.PetViewModelFactory
+import tn.rifq_android.viewmodel.pet.PetUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +57,26 @@ fun AddPetScreen(navController: NavHostController) {
     var errorMessage by remember { mutableStateOf("") }
     var showTypeDropdown by remember { mutableStateOf(false) }
     var showGenderDropdown by remember { mutableStateOf(false) }
+
+    // Image upload states
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    // Image picker
+    val imagePicker = rememberImagePicker { uri ->
+        selectedImageUri = uri
+        Log.d("AddPetScreen", "Image selected: $uri")
+        // Convert to file immediately
+        val file = tn.rifq_android.util.ImageFileHelper.uriToFile(context, uri)
+        if (file != null) {
+            selectedImageFile = file
+            Toast.makeText(context, "Photo selected!", Toast.LENGTH_SHORT).show()
+        } else {
+            errorMessage = "Failed to process selected image"
+            showError = true
+            Toast.makeText(context, "Failed to process image", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Handle successful pet addition
     LaunchedEffect(uiState) {
@@ -80,7 +108,12 @@ fun AddPetScreen(navController: NavHostController) {
     }
 
     Scaffold(
-        topBar = { AddPetTopBar(navController) },
+        topBar = {
+            TopNavBar(
+                title = "Add New Pet",
+                navController = navController
+            )
+        },
         containerColor = PageBackground
     ) { paddingValues ->
         LazyColumn(
@@ -103,21 +136,34 @@ fun AddPetScreen(navController: NavHostController) {
                             .size(120.dp)
                             .clip(CircleShape)
                             .background(Color(0xFFE8C4B4))
-                            .clickable { /* Handle photo */ },
+                            .clickable { imagePicker() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add photo",
-                            tint = OrangeAccent,
-                            modifier = Modifier.size(40.dp)
-                        )
+                        when {
+                            selectedImageUri != null -> {
+                                Image(
+                                    painter = rememberAsyncImagePainter(selectedImageUri),
+                                    contentDescription = "Selected pet photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Add photo",
+                                    tint = OrangeAccent,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
                     }
 
                     Text(
-                        text = "Add Pet Photo (Optional)",
+                        text = if (selectedImageFile != null) "Photo selected ✓"
+                               else "Add Pet Photo (Optional)",
                         fontSize = 14.sp,
-                        color = TextSecondary
+                        color = if (selectedImageFile != null) OrangeAccent else TextSecondary
                     )
                 }
             }
@@ -293,9 +339,9 @@ fun AddPetScreen(navController: NavHostController) {
                         PetInfoTextField(
                             value = petMicrochipId,
                             onValueChange = { petMicrochipId = it },
-                            label = "Microchip ID (Optional)",
+                            label = "Microchip ID (Must be unique)",
                             icon = Icons.Default.Check,
-                            placeholder = "Enter microchip number"
+                            placeholder = "e.g., CHIP123456"
                         )
                     }
                 }
@@ -332,6 +378,7 @@ fun AddPetScreen(navController: NavHostController) {
                                     color = petColor.trim().takeIf { it.isNotBlank() },
                                     weight = petWeight.toDoubleOrNull(),
                                     height = petHeight.toDoubleOrNull(),
+                                    photoFile = selectedImageFile, // Include selected image file
                                     microchipId = petMicrochipId.trim().takeIf { it.isNotBlank() }
                                 )
                             }
@@ -367,32 +414,6 @@ fun AddPetScreen(navController: NavHostController) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddPetTopBar(navController: NavHostController) {
-    TopAppBar(
-        title = {
-            Text(
-                "Add New Pet",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = TextPrimary
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

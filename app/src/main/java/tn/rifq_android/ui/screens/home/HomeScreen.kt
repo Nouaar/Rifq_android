@@ -1,6 +1,7 @@
 package tn.rifq_android.ui.screens.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,16 +18,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.viewmodel.ProfileViewModel
-import tn.rifq_android.viewmodel.ProfileViewModelFactory
-import tn.rifq_android.viewmodel.ProfileUiState
+import tn.rifq_android.ui.utils.PetUtils
+import tn.rifq_android.viewmodel.profile.ProfileViewModel
+import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
+import tn.rifq_android.viewmodel.profile.ProfileUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -295,13 +299,24 @@ private fun SmallPetCard(pet: tn.rifq_android.data.model.pet.Pet, onClick: () ->
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(getPetColor(pet.species)),
+                    .background(PetUtils.getPetColor(pet.species)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = getPetEmoji(pet.species),
-                    fontSize = 40.sp
-                )
+                if (!pet.photo.isNullOrBlank()) {
+                    // Display photo from Cloudinary
+                    Image(
+                        painter = rememberAsyncImagePainter(pet.photo),
+                        contentDescription = "${pet.name}'s photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Display emoji fallback
+                    Text(
+                        text = PetUtils.getPetEmoji(pet.species),
+                        fontSize = 40.sp
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
@@ -319,53 +334,6 @@ private fun SmallPetCard(pet: tn.rifq_android.data.model.pet.Pet, onClick: () ->
     }
 }
 
-// Helper functions to get pet emoji and color based on species
-private fun getPetEmoji(species: String): String {
-    return when (species.lowercase()) {
-        "dog" -> "🐕"
-        "cat" -> "🐈"
-        "bird" -> "🐦"
-        "fish" -> "🐠"
-        "rabbit" -> "🐰"
-        "hamster" -> "🐹"
-        else -> "🐾"
-    }
-}
-
-private fun getPetColor(species: String): Color {
-    return when (species.lowercase()) {
-        "dog" -> PetAvatarBrown
-        "cat" -> PetAvatarTan
-        "bird" -> Color(0xFFADD8E6)
-        "fish" -> Color(0xFF87CEEB)
-        "rabbit" -> Color(0xFFFFB6C1)
-        "hamster" -> Color(0xFFFFA07A)
-        else -> PetAvatarBrown
-    }
-}
-
-enum class BadgeKind { Success, Warning, Danger }
-
-@Composable
-private fun BadgeSmall(text: String, kind: BadgeKind) {
-    val (bg, fg) = when (kind) {
-        BadgeKind.Success -> Pair(Color(0xFFD1F4E7), Color(0xFF0F9D58))
-        BadgeKind.Warning -> Pair(Color(0xFFFFF4E5), Color(0xFFE67C00))
-        BadgeKind.Danger -> Pair(Color(0xFFFFE8E8), Color(0xFFD32F2F))
-    }
-    Box(
-        modifier = Modifier
-            .background(bg, shape = RoundedCornerShape(8.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = text,
-            color = fg,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
-}
 
 @Composable
 private fun QuickActionsGrid(navController: NavHostController) {
@@ -435,50 +403,3 @@ private fun QuickActionCard(icon: String, label: String, modifier: Modifier = Mo
     }
 }
 
-@Composable
-private fun VetListItem(name: String, schedule: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (name == "John Smith") TimelineLine else PetAvatarTan
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = if (name == "John Smith") "👨‍⚕️" else "👩‍⚕️", fontSize = 24.sp)
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    text = schedule,
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
-            }
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowRight,
-                contentDescription = "Open",
-                tint = TextSecondary
-            )
-        }
-    }
-}

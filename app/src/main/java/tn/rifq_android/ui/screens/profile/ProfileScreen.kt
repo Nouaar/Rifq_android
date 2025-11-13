@@ -15,20 +15,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import tn.rifq_android.data.model.pet.Pet
+import tn.rifq_android.ui.components.TopNavBar
+import tn.rifq_android.data.storage.ThemePreference
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.data.storage.UserManager
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.viewmodel.ProfileUiState
-import tn.rifq_android.viewmodel.ProfileViewModel
-import tn.rifq_android.viewmodel.ProfileViewModelFactory
+import tn.rifq_android.viewmodel.profile.ProfileAction
+import tn.rifq_android.viewmodel.profile.ProfileUiState
+import tn.rifq_android.viewmodel.profile.ProfileViewModel
+import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +39,15 @@ fun ProfileScreen(
     val context = LocalContext.current
     val viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(context))
     val uiState by viewModel.uiState.collectAsState()
+    val actionState by viewModel.actionState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+
+    val themePreference = remember { ThemePreference(context) }
+    val isDarkMode by themePreference.isDarkMode.collectAsState(initial = false)
+
+    // Dialog states
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState) {
         if (uiState is ProfileUiState.UserDeleted) {
@@ -46,17 +55,36 @@ fun ProfileScreen(
         }
     }
 
+    // Handle action results
+    LaunchedEffect(actionState) {
+        when (actionState) {
+            is ProfileAction.Success -> {
+                android.widget.Toast.makeText(
+                    context,
+                    (actionState as ProfileAction.Success).message,
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                showEditDialog = false
+                showDeleteDialog = false
+                viewModel.resetActionState()
+            }
+            is ProfileAction.Error -> {
+                android.widget.Toast.makeText(
+                    context,
+                    (actionState as ProfileAction.Error).message,
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                viewModel.resetActionState()
+            }
+            else -> {}
+        }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Profile",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 28.sp,
-                        color = TextPrimary
-                    )
-                },
+            TopNavBar(
+                title = "Profile",
+                showBackButton = false,
                 actions = {
                     IconButton(onClick = { /* Handle notification */ }) {
                         Icon(
@@ -72,10 +100,7 @@ fun ProfileScreen(
                             tint = TextSecondary
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HeaderBackground
-                )
+                }
             )
         },
         containerColor = PageBackground
@@ -205,36 +230,6 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // My Pets Section
-                    if (state.pets.isNotEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Text(
-                                "My Pets",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp
-                                ),
-                                color = TextPrimary
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            state.pets.forEachIndexed { index, pet ->
-                                PetCard(
-                                    pet = pet,
-                                    backgroundColor = if (index % 2 == 0) PetAvatarBrown else PetAvatarTan
-                                )
-                                if (index < state.pets.size - 1) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(32.dp))
-                    }
 
                     // Settings Section
                     Column(
@@ -252,11 +247,33 @@ fun ProfileScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        SettingsCard(icon = "🔔", label = "Notifications")
+                        // Edit Profile Button
+                        SettingsCard(
+                            icon = "✏️",
+                            label = "Edit Profile",
+                            onClick = { showEditDialog = true }
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
-                        SettingsCard(icon = "🌐", label = "Language")
+
+                        // Dark Mode Toggle
+                        ThemeToggleCard(
+                            isDarkMode = isDarkMode,
+                            onToggle = { enabled ->
+                                coroutineScope.launch {
+                                    themePreference.setDarkMode(enabled)
+                                }
+                            }
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
-                        SettingsCard(icon = "🔒", label = "Privacy")
+
+                        // Delete Account Button
+                        SettingsCard(
+                            icon = "🗑️",
+                            label = "Delete Account",
+                            onClick = { showDeleteDialog = true },
+                            isDestructive = true
+                        )
+
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -305,6 +322,31 @@ fun ProfileScreen(
                     CircularProgressIndicator()
                 }
             }
+        }
+
+        // Edit Profile Dialog
+        if (showEditDialog && uiState is ProfileUiState.Success) {
+            EditProfileDialog(
+                user = (uiState as ProfileUiState.Success).user,
+                onDismiss = { showEditDialog = false },
+                onSave = { name, email, photoFile ->
+                    viewModel.updateProfileWithImage(
+                        name = name,
+                        email = email,
+                        photoFile = photoFile
+                    )
+                }
+            )
+        }
+
+        // Delete Account Dialog
+        if (showDeleteDialog) {
+            DeleteAccountDialog(
+                onConfirm = {
+                    viewModel.deleteAccount()
+                },
+                onDismiss = { showDeleteDialog = false }
+            )
         }
     }
 }
@@ -369,81 +411,19 @@ fun InfoCard(label: String, value: String) {
     }
 }
 
+
+
 @Composable
-fun PetCard(
-    pet: Pet,
-    backgroundColor: Color
+fun SettingsCard(
+    icon: String,
+    label: String,
+    onClick: () -> Unit = {},
+    isDestructive: Boolean = false
 ) {
-    // Determine emoji based on pet species
-    val petEmoji = when (pet.species.lowercase()) {
-        "dog" -> "🐕"
-        "cat" -> "🐈"
-        "bird" -> "🐦"
-        "fish" -> "🐠"
-        "rabbit" -> "🐰"
-        "hamster" -> "🐹"
-        else -> "🐾"
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* TODO: Navigate to pet detail */ },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Pet avatar with emoji
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(backgroundColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = petEmoji,
-                    fontSize = 32.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = pet.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "${pet.breed ?: pet.species} • ${pet.age ?: "Unknown"} ${if (pet.age == 1) "year" else "years"}",
-                    fontSize = 14.sp,
-                    color = TextSecondary
-                )
-            }
-
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowRight,
-                contentDescription = "View pet",
-                tint = TextSecondary
-            )
-        }
-    }
-}
-
-@Composable
-fun SettingsCard(icon: String, label: String) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { /* Handle settings click */ },
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -463,8 +443,55 @@ fun SettingsCard(icon: String, label: String) {
                 text = label,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                color = if (isDestructive) androidx.compose.ui.graphics.Color.Red else TextPrimary
             )
         }
     }
 }
+
+@Composable
+fun ThemeToggleCard(isDarkMode: Boolean, onToggle: (Boolean) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isDarkMode) "🌙" else "☀️",
+                    fontSize = 20.sp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (isDarkMode) "Dark Mode" else "Light Mode",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+            Switch(
+                checked = isDarkMode,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = OrangeAccent,
+                    checkedTrackColor = OrangeAccent.copy(alpha = 0.5f),
+                    uncheckedThumbColor = TextSecondary,
+                    uncheckedTrackColor = TextSecondary.copy(alpha = 0.3f)
+                )
+            )
+        }
+    }
+}
+
+
+

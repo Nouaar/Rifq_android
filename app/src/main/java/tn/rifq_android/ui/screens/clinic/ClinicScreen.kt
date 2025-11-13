@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 
 // Data class for vet
@@ -44,7 +45,28 @@ fun ClinicScreen(navController: NavHostController) {
     val vets = emptyList<Vet>() // Replace with dynamic data from backend API
 
     Scaffold(
-        topBar = { ClinicTopBar() },
+        topBar = {
+            TopNavBar(
+                title = "Find a Vet",
+                showBackButton = false,
+                actions = {
+                    IconButton(onClick = { /* notifications */ }) {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = "Notifications",
+                            tint = OrangeAccent
+                        )
+                    }
+                    IconButton(onClick = { /* settings */ }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings",
+                            tint = TextSecondary
+                        )
+                    }
+                }
+            )
+        },
         containerColor = PageBackground
     ) { paddingValues ->
         LazyColumn(
@@ -93,39 +115,6 @@ fun ClinicScreen(navController: NavHostController) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ClinicTopBar() {
-    TopAppBar(
-        title = {
-            Text(
-                "Find a Vet",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
-            )
-        },
-        actions = {
-            IconButton(onClick = { /* notifications */ }) {
-                Icon(
-                    imageVector = Icons.Filled.Notifications,
-                    contentDescription = "Notifications",
-                    tint = OrangeAccent
-                )
-            }
-            IconButton(onClick = { /* settings */ }) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings",
-                    tint = TextSecondary
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

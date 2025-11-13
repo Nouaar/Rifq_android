@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.sp
 import tn.rifq_android.R
 import tn.rifq_android.ui.theme.LoginBackground
 import tn.rifq_android.ui.theme.OrangePrimary
-import tn.rifq_android.viewmodel.AuthUiState
-import tn.rifq_android.viewmodel.AuthViewModel
+import tn.rifq_android.viewmodel.auth.AuthUiState
+import tn.rifq_android.viewmodel.auth.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

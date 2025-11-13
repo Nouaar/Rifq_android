@@ -1,5 +1,6 @@
-package tn.rifq_android.viewmodel
+package tn.rifq_android.viewmodel.profile
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,12 +9,14 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.ProfileRepository
 import tn.rifq_android.data.repository.PetsRepository
+import tn.rifq_android.data.repository.UserRepository
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.data.storage.UserManager
 import tn.rifq_android.data.model.auth.User
 import tn.rifq_android.data.model.pet.Pet
 import tn.rifq_android.data.model.profile.UpdateProfileRequest
 import tn.rifq_android.util.JwtDecoder
+import java.io.File
 
 sealed class ProfileUiState {
     object Idle : ProfileUiState()
@@ -33,6 +36,7 @@ sealed class ProfileAction {
 class ProfileViewModel(
     private val repository: ProfileRepository,
     private val petsRepository: PetsRepository,
+    private val userRepository: UserRepository,
     private val tokenManager: TokenManager,
     private val userManager: UserManager
 ) : ViewModel() {
@@ -42,6 +46,10 @@ class ProfileViewModel(
 
     private val _actionState = MutableStateFlow<ProfileAction>(ProfileAction.Idle)
     val actionState: StateFlow<ProfileAction> = _actionState
+
+    companion object {
+        private const val TAG = "ProfileViewModel"
+    }
 
     init {
         loadProfile()
@@ -137,9 +145,104 @@ class ProfileViewModel(
         }
     }
 
+    fun updateProfileWithImage(
+        name: String? = null,
+        email: String? = null,
+        photoFile: File? = null
+    ) {
+        viewModelScope.launch {
+            _actionState.value = ProfileAction.Loading
+            try {
+                Log.d(TAG, "Updating profile with name: $name, email: $email, photoFile: ${photoFile?.name}")
+
+                val response = userRepository.updateProfile(
+                    name = name,
+                    email = email,
+                    photoFile = photoFile
+                )
+
+                Log.d(TAG, "Response code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val user = response.body()
+                    Log.d(TAG, "Profile updated successfully: ${user?.id}, photo: ${user?.profileImage}")
+                    // Clean up temp file
+                    photoFile?.delete()
+                    _actionState.value = ProfileAction.Success("Profile updated successfully!")
+                    loadProfile()
+                } else {
+                    val code = response.code()
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Failed to update profile: $errorBody")
+                    // Clean up temp file
+                    photoFile?.delete()
+
+                    if (code == 401) {
+                        // Session expired or invalid token; clear and force logout
+                        tokenManager.clearTokens()
+                        userManager.clearUserId()
+                        _uiState.value = ProfileUiState.UserDeleted
+                        _actionState.value = ProfileAction.Error("Session expired. Please log in again.")
+                    } else {
+                        _actionState.value = ProfileAction.Error(
+                            errorBody ?: "Failed to update profile"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception updating profile", e)
+                photoFile?.delete()
+                _actionState.value = ProfileAction.Error(
+                    e.message ?: "Network error. Please try again."
+                )
+            }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _actionState.value = ProfileAction.Loading
+            try {
+                Log.d(TAG, "Deleting account")
+
+                val response = userRepository.deleteAccount()
+
+                Log.d(TAG, "Delete response code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Account deleted successfully")
+                    // Clear all local data
+                    tokenManager.clearTokens()
+                    userManager.clearUserId()
+                    _actionState.value = ProfileAction.Success("Account deleted successfully")
+                    _uiState.value = ProfileUiState.UserDeleted
+                } else {
+                    val code = response.code()
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Failed to delete account: $errorBody")
+
+                    if (code == 401) {
+                        tokenManager.clearTokens()
+                        userManager.clearUserId()
+                        _uiState.value = ProfileUiState.UserDeleted
+                        _actionState.value = ProfileAction.Error("Session expired. Please log in again.")
+                    } else {
+                        _actionState.value = ProfileAction.Error(
+                            errorBody ?: "Failed to delete account"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception deleting account", e)
+                _actionState.value = ProfileAction.Error(
+                    e.message ?: "Network error. Please try again."
+                )
+            }
+        }
+    }
+
 
     fun resetActionState() {
         _actionState.value = ProfileAction.Idle
     }
 }
-

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,7 +31,28 @@ fun MedicalScreen(navController: NavHostController) {
     var currentStep by remember { mutableStateOf(1) } // Medical step is active
 
     Scaffold(
-        topBar = { MedicalTopBar(navController) },
+        topBar = {
+            TopNavBar(
+                title = "Add New Pet",
+                navController = navController,
+                actions = {
+                    IconButton(onClick = { /* notifications */ }) {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = "Notifications",
+                            tint = OrangeAccent
+                        )
+                    }
+                    IconButton(onClick = { /* settings */ }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings",
+                            tint = TextSecondary
+                        )
+                    }
+                }
+            )
+        },
         containerColor = PageBackground
     ) { paddingValues ->
         LazyColumn(
@@ -230,48 +252,6 @@ fun MedicalScreen(navController: NavHostController) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MedicalTopBar(navController: NavHostController) {
-    TopAppBar(
-        title = {
-            Text(
-                "Add New Pet",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = TextPrimary
-                )
-            }
-        },
-        actions = {
-            IconButton(onClick = { /* notifications */ }) {
-                Icon(
-                    imageVector = Icons.Filled.Notifications,
-                    contentDescription = "Notifications",
-                    tint = OrangeAccent
-                )
-            }
-            IconButton(onClick = { /* settings */ }) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings",
-                    tint = TextSecondary
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
 
 @Composable
 private fun StepIndicator(

@@ -1,4 +1,4 @@
-package tn.rifq_android.viewmodel
+package tn.rifq_android.viewmodel.auth
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
