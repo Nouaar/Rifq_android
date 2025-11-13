@@ -14,8 +14,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import tn.rifq_android.data.model.Pet
 import tn.rifq_android.data.model.User
+import tn.rifq_android.data.storage.TokenManager
+import tn.rifq_android.data.storage.UserManager
 import tn.rifq_android.viewmodel.ProfileUiState
 import tn.rifq_android.viewmodel.ProfileViewModel
 import tn.rifq_android.viewmodel.ProfileViewModelFactory
@@ -34,6 +37,7 @@ fun ProfileScreen(
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var petToDelete by remember { mutableStateOf<Pet?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(actionState) {
         when (actionState) {
@@ -240,7 +244,15 @@ fun ProfileScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
-                            onClick = onLogout,
+                            onClick = {
+                                coroutineScope.launch {
+                                    val tokenManager = TokenManager(context)
+                                    val userManager = UserManager(context)
+                                    tokenManager.clearTokens()
+                                    userManager.clearUserId()
+                                    onLogout()
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error

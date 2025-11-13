@@ -92,7 +92,6 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
 
         composable(Routes.MAIN) {
             MainScreen(
-                context = context,
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }

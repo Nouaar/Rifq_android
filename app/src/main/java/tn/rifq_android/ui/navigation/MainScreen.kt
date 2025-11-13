@@ -1,92 +1,66 @@
 package tn.rifq_android.ui.navigation
 
-import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import tn.rifq_android.ui.screens.profile.ProfileScreen
+import tn.rifq_android.ui.components.MyPetsBottomNavBar
 import tn.rifq_android.ui.screens.home.HomeScreen
-import tn.rifq_android.viewmodel.AuthViewModel
-import tn.rifq_android.viewmodel.AuthViewModelFactory
-
-sealed class BottomNavItem(
-    val route: String,
-    val title: String,
-    val icon: ImageVector
-) {
-    object Home : BottomNavItem("home", "Home", Icons.Default.Home)
-    object Profile : BottomNavItem("profile", "Profile", Icons.Default.Person)
-}
+import tn.rifq_android.ui.screens.profile.ProfileScreen
 
 @Composable
 fun MainScreen(
-    context: Context,
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
-    val factory = AuthViewModelFactory(context)
-    val authViewModel: AuthViewModel = viewModel(factory = factory)
-
-    val items = listOf(
-        BottomNavItem.Home,
-        BottomNavItem.Profile
-    )
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-
-                items.forEach { item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                }
-            }
+            MyPetsBottomNavBar(navController = navController)
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = BottomNavItem.Home.route,
+            startDestination = "mypets",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(BottomNavItem.Home.route) {
-                HomeScreen(
-                    viewModel = authViewModel,
-                    onLogout = onLogout
-                )
+            composable("mypets") {
+                HomeScreen(navController = navController)
             }
 
-            composable(BottomNavItem.Profile.route) {
+            composable("profile") {
                 ProfileScreen(
                     onLogout = onLogout
                 )
             }
+
+            // Placeholder routes for other bottom nav items
+            composable("clinic") {
+                // TODO: Implement ClinicScreen
+                PlaceholderScreen(title = "Clinic")
+            }
+
+            composable("join") {
+                // TODO: Implement JoinScreen
+                PlaceholderScreen(title = "Join")
+            }
         }
+    }
+}
+
+@Composable
+private fun PlaceholderScreen(title: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = "$title Screen - Coming Soon", style = MaterialTheme.typography.headlineMedium)
     }
 }
 

@@ -7,15 +7,33 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = OrangePrimary,
+    secondary = OrangeLight,
+    tertiary = OrangeAccent,
+    background = DarkBackground,
+    surface = DarkSurface,
+    onPrimary = White,
+    onSecondary = White,
+    onTertiary = White,
+    onBackground = DarkOnBackground,
+    onSurface = DarkOnSurface,
+    error = ErrorRed
 )
 
+
+
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = OrangeAccent,
+    secondary = OrangeLight,
+    tertiary = OrangePrimary,
+    background = PageBackground,
+    surface = CardBackground,
+    onPrimary = ChipSelectedText,
+    onSecondary = TextPrimary,
+    onTertiary = TextPrimary,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    error = ErrorRed
 )
 
 @Composable
@@ -34,4 +52,3 @@ fun AppTheme(
         content = content
     )
 }
-
