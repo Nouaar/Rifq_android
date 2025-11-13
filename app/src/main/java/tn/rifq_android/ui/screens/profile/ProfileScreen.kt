@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import tn.rifq_android.data.model.Pet
+import tn.rifq_android.data.model.pet.Pet
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.data.storage.UserManager
 import tn.rifq_android.ui.theme.*
@@ -374,8 +374,8 @@ fun PetCard(
     pet: Pet,
     backgroundColor: Color
 ) {
-    // Determine emoji based on pet type
-    val petEmoji = when (pet.type.lowercase()) {
+    // Determine emoji based on pet species
+    val petEmoji = when (pet.species.lowercase()) {
         "dog" -> "🐕"
         "cat" -> "🐈"
         "bird" -> "🐦"
@@ -423,7 +423,7 @@ fun PetCard(
                     color = TextPrimary
                 )
                 Text(
-                    text = "${pet.breed} • ${pet.age} years",
+                    text = "${pet.breed ?: pet.species} • ${pet.age ?: "Unknown"} ${if (pet.age == 1) "year" else "years"}",
                     fontSize = 14.sp,
                     color = TextSecondary
                 )

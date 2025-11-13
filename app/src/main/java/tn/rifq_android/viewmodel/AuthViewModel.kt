@@ -8,9 +8,9 @@ import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.AuthRepository
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.data.storage.UserManager
-import tn.rifq_android.data.model.LoginRequest
-import tn.rifq_android.data.model.RegisterRequest
-import tn.rifq_android.data.model.VerifyEmailRequest
+import tn.rifq_android.data.model.auth.LoginRequest
+import tn.rifq_android.data.model.auth.RegisterRequest
+import tn.rifq_android.data.model.auth.VerifyEmailRequest
 import tn.rifq_android.util.ValidationUtil
 
 sealed class AuthUiState {

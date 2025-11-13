@@ -1,9 +1,9 @@
 package tn.rifq_android.data.api
 
-import tn.rifq_android.data.model.AuthResponse
-import tn.rifq_android.data.model.LoginRequest
-import tn.rifq_android.data.model.RegisterRequest
-import tn.rifq_android.data.model.VerifyEmailRequest
+import tn.rifq_android.data.model.auth.AuthResponse
+import tn.rifq_android.data.model.auth.LoginRequest
+import tn.rifq_android.data.model.auth.RegisterRequest
+import tn.rifq_android.data.model.auth.VerifyEmailRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST

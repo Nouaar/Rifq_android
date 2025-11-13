@@ -1,4 +1,6 @@
-package tn.rifq_android.data.model
+package tn.rifq_android.data.model.auth
+
+import tn.rifq_android.data.model.auth.User
 
 data class AuthResponse(
     val message: String?,

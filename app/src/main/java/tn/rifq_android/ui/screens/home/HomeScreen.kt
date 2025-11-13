@@ -12,27 +12,105 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import tn.rifq_android.ui.theme.*
-
-data class Pet(val id: String = "", val name: String, val breed: String, val status: String)
+import tn.rifq_android.viewmodel.ProfileViewModel
+import tn.rifq_android.viewmodel.ProfileViewModelFactory
+import tn.rifq_android.viewmodel.ProfileUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController) {
-    val pets = listOf(
-        Pet("max", "Max", "Doberman", "Healthy"),
-        Pet("luna", "Luna", "Siamese", "Due Soon")
+    val context = LocalContext.current
+    val viewModel: ProfileViewModel = viewModel(
+        factory = ProfileViewModelFactory(context)
     )
+    val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadProfile()
+    }
+
+    when (val state = uiState) {
+        is ProfileUiState.Loading -> {
+            LoadingScreen()
+        }
+        is ProfileUiState.Success -> {
+            HomeScreenContent(
+                navController = navController,
+                pets = state.pets,
+                userName = state.user.name
+            )
+        }
+        is ProfileUiState.Error -> {
+            ErrorScreen(message = state.message, onRetry = { viewModel.loadProfile() })
+        }
+        is ProfileUiState.UserDeleted -> {
+            // User deleted, should navigate to login
+            LaunchedEffect(Unit) {
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+        else -> {
+            // Idle state
+        }
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = OrangeAccent)
+    }
+}
+
+@Composable
+private fun ErrorScreen(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = message,
+                color = TextPrimary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent)
+            ) {
+                Text("Retry", color = Color.White)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeScreenContent(
+    navController: NavHostController,
+    pets: List<tn.rifq_android.data.model.pet.Pet>,
+    userName: String
+) {
     Scaffold(
         topBar = { MyPetsTopBar() },
         containerColor = PageBackground
@@ -83,65 +161,51 @@ fun HomeScreen(navController: NavHostController) {
 
             // Pet carousel at the top
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(pets) { pet ->
-                        SmallPetCard(
-                            pet = pet,
-                            onClick = { navController.navigate("pet_profile/${pet.id}") }
-                        )
-                    }
-                }
-            }
-
-            // Featured pet summary card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                if (pets.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        // Pet avatar
-                        Box(
+                        Column(
                             modifier = Modifier
-                                .size(60.dp)
-                                .clip(CircleShape)
-                                .background(PetAvatarBrown),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "🐕",
-                                style = MaterialTheme.typography.headlineMedium
+                                text = "🐾",
+                                fontSize = 48.sp
                             )
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Max",
+                                text = "No pets yet",
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
                                 color = TextPrimary
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "✓ Up-to-date | 1 med | 2.8kg",
-                                fontSize = 13.sp,
+                                text = "Add your first pet to get started",
+                                fontSize = 14.sp,
                                 color = TextSecondary
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                BadgeSmall(text = "Healthy", kind = BadgeKind.Success)
-                                BadgeSmall(text = "Due Soon", kind = BadgeKind.Warning)
-                            }
+                        }
+                    }
+                } else {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        items(pets) { pet ->
+                            SmallPetCard(
+                                pet = pet,
+                                onClick = { navController.navigate("pet_detail/${pet.id}") }
+                            )
                         }
                     }
                 }
             }
+
+
 
             // Quick Actions section
             item {
@@ -167,18 +231,10 @@ fun HomeScreen(navController: NavHostController) {
                 )
             }
 
-            items(
-                listOf(
-                    Pair("John Smith", "Mon-Wed, 9 am - 6 pm"),
-                    Pair("Lil Kim", "Tue-Fri, 9 am - 6 pm")
-                )
-            ) { vet ->
-                VetListItem(
-                    name = vet.first,
-                    schedule = vet.second,
-                    onClick = { /* navigate to vet details */ }
-                )
-            }
+            // TODO: Replace with dynamic vet data from backend API
+            // items(vets) { vet ->
+            //     VetListItem(vet, onClick = { navController.navigate("vet_profile/${vet.id}") })
+            // }
 
             item { Spacer(modifier = Modifier.height(20.dp)) }
         }
@@ -220,7 +276,7 @@ private fun MyPetsTopBar() {
 }
 
 @Composable
-private fun SmallPetCard(pet: Pet, onClick: () -> Unit) {
+private fun SmallPetCard(pet: tn.rifq_android.data.model.pet.Pet, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .width(130.dp)
@@ -239,13 +295,11 @@ private fun SmallPetCard(pet: Pet, onClick: () -> Unit) {
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (pet.name == "Max") PetAvatarBrown else PetAvatarTan
-                    ),
+                    .background(getPetColor(pet.species)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (pet.name == "Max") "🐕" else "🐈",
+                    text = getPetEmoji(pet.species),
                     fontSize = 40.sp
                 )
             }
@@ -257,11 +311,36 @@ private fun SmallPetCard(pet: Pet, onClick: () -> Unit) {
                 color = TextPrimary
             )
             Text(
-                text = pet.breed,
+                text = pet.breed ?: pet.species.replaceFirstChar { it.uppercase() },
                 fontSize = 13.sp,
                 color = TextSecondary
             )
         }
+    }
+}
+
+// Helper functions to get pet emoji and color based on species
+private fun getPetEmoji(species: String): String {
+    return when (species.lowercase()) {
+        "dog" -> "🐕"
+        "cat" -> "🐈"
+        "bird" -> "🐦"
+        "fish" -> "🐠"
+        "rabbit" -> "🐰"
+        "hamster" -> "🐹"
+        else -> "🐾"
+    }
+}
+
+private fun getPetColor(species: String): Color {
+    return when (species.lowercase()) {
+        "dog" -> PetAvatarBrown
+        "cat" -> PetAvatarTan
+        "bird" -> Color(0xFFADD8E6)
+        "fish" -> Color(0xFF87CEEB)
+        "rabbit" -> Color(0xFFFFB6C1)
+        "hamster" -> Color(0xFFFFA07A)
+        else -> PetAvatarBrown
     }
 }
 

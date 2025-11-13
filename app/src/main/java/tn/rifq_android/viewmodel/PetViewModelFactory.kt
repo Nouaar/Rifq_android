@@ -1,0 +1,21 @@
+package tn.rifq_android.viewmodel
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import tn.rifq_android.data.api.RetrofitInstance
+import tn.rifq_android.data.repository.PetsRepository
+import tn.rifq_android.data.storage.TokenManager
+
+class PetViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(PetViewModel::class.java)) {
+            val tokenManager = TokenManager(context)
+            val repository = PetsRepository(RetrofitInstance.petsApi)
+            @Suppress("UNCHECKED_CAST")
+            return PetViewModel(repository, tokenManager) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+

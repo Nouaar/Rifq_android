@@ -7,9 +7,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.ProfileRepository
+import tn.rifq_android.data.repository.PetsRepository
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.data.storage.UserManager
-import tn.rifq_android.data.model.*
+import tn.rifq_android.data.model.auth.User
+import tn.rifq_android.data.model.pet.Pet
+import tn.rifq_android.data.model.profile.UpdateProfileRequest
 import tn.rifq_android.util.JwtDecoder
 
 sealed class ProfileUiState {
@@ -29,6 +32,7 @@ sealed class ProfileAction {
 
 class ProfileViewModel(
     private val repository: ProfileRepository,
+    private val petsRepository: PetsRepository,
     private val tokenManager: TokenManager,
     private val userManager: UserManager
 ) : ViewModel() {
@@ -62,28 +66,39 @@ class ProfileViewModel(
                     return@launch
                 }
 
-                val response = repository.getProfile(userId)
-                if (response.isSuccessful) {
-                    val user = response.body()
-                    if (user != null) {
-                        _uiState.value = ProfileUiState.Success(
-                            user = user,
-                            pets = user.pets ?: emptyList()
-                        )
-                    } else {
-                        _uiState.value = ProfileUiState.Error("No profile data received")
-                    }
-                } else {
-                    if (response.code() == 404) {
+                // Fetch user profile
+                val userResponse = repository.getProfile(userId)
+                if (!userResponse.isSuccessful) {
+                    if (userResponse.code() == 404) {
                         tokenManager.clearTokens()
                         userManager.clearUserId()
                         _uiState.value = ProfileUiState.UserDeleted
                     } else {
                         _uiState.value = ProfileUiState.Error(
-                            response.errorBody()?.string() ?: "Failed to load profile"
+                            userResponse.errorBody()?.string() ?: "Failed to load profile"
                         )
                     }
+                    return@launch
                 }
+
+                val user = userResponse.body()
+                if (user == null) {
+                    _uiState.value = ProfileUiState.Error("No profile data received")
+                    return@launch
+                }
+
+                // Fetch pets separately
+                val petsResponse = petsRepository.getPetsByOwner(userId)
+                val pets = if (petsResponse.isSuccessful) {
+                    petsResponse.body() ?: emptyList()
+                } else {
+                    emptyList() // If pets fetch fails, just show empty list
+                }
+
+                _uiState.value = ProfileUiState.Success(
+                    user = user,
+                    pets = pets
+                )
             } catch (e: Exception) {
                 _uiState.value = ProfileUiState.Error(
                     e.message ?: "Network error. Please try again."
@@ -122,98 +137,6 @@ class ProfileViewModel(
         }
     }
 
-    fun addPet(name: String, type: String, breed: String, age: Int, description: String? = null) {
-        viewModelScope.launch {
-            _actionState.value = ProfileAction.Loading
-            try {
-                val userId = getUserIdFromToken()
-                if (userId.isNullOrBlank()) {
-                    _actionState.value = ProfileAction.Error("User not authenticated")
-                    return@launch
-                }
-
-                val response = repository.addPet(
-                    userId,
-                    AddPetRequest(
-                        name = name,
-                        type = type,
-                        breed = breed,
-                        age = age,
-                        description = description
-                    )
-                )
-                if (response.isSuccessful) {
-                    _actionState.value = ProfileAction.Success("Pet added successfully")
-                    loadProfile()
-                } else {
-                    _actionState.value = ProfileAction.Error(
-                        response.errorBody()?.string() ?: "Failed to add pet"
-                    )
-                }
-            } catch (e: Exception) {
-                _actionState.value = ProfileAction.Error(
-                    e.message ?: "Network error. Please try again."
-                )
-            }
-        }
-    }
-
-    fun updatePet(petId: String, name: String, type: String, breed: String, age: Int, description: String? = null) {
-        viewModelScope.launch {
-            _actionState.value = ProfileAction.Loading
-            try {
-                val response = repository.updatePet(
-                    petId,
-                    UpdatePetRequest(
-                        name = name,
-                        type = type,
-                        breed = breed,
-                        age = age,
-                        description = description
-                    )
-                )
-                if (response.isSuccessful) {
-                    _actionState.value = ProfileAction.Success("Pet updated successfully")
-                    loadProfile()
-                } else {
-                    _actionState.value = ProfileAction.Error(
-                        response.errorBody()?.string() ?: "Failed to update pet"
-                    )
-                }
-            } catch (e: Exception) {
-                _actionState.value = ProfileAction.Error(
-                    e.message ?: "Network error. Please try again."
-                )
-            }
-        }
-    }
-
-    fun deletePet(petId: String) {
-        viewModelScope.launch {
-            _actionState.value = ProfileAction.Loading
-            try {
-                val userId = getUserIdFromToken()
-                if (userId.isNullOrBlank()) {
-                    _actionState.value = ProfileAction.Error("User not authenticated")
-                    return@launch
-                }
-
-                val response = repository.deletePet(userId, petId)
-                if (response.isSuccessful) {
-                    _actionState.value = ProfileAction.Success("Pet deleted successfully")
-                    loadProfile()
-                } else {
-                    _actionState.value = ProfileAction.Error(
-                        response.errorBody()?.string() ?: "Failed to delete pet"
-                    )
-                }
-            } catch (e: Exception) {
-                _actionState.value = ProfileAction.Error(
-                    e.message ?: "Network error. Please try again."
-                )
-            }
-        }
-    }
 
     fun resetActionState() {
         _actionState.value = ProfileAction.Idle

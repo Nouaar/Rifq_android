@@ -13,6 +13,15 @@ import androidx.navigation.compose.rememberNavController
 import tn.rifq_android.ui.components.MyPetsBottomNavBar
 import tn.rifq_android.ui.screens.home.HomeScreen
 import tn.rifq_android.ui.screens.profile.ProfileScreen
+import tn.rifq_android.ui.screens.pet.AddPetScreen
+import tn.rifq_android.ui.screens.clinic.ClinicScreen
+import tn.rifq_android.ui.screens.calendar.CalendarScreen
+import tn.rifq_android.ui.screens.join.JoinScreen
+import tn.rifq_android.ui.screens.chat.ChatAIScreen
+import tn.rifq_android.ui.screens.petsitter.PetSitterScreen
+import tn.rifq_android.ui.screens.petdetail.PetDetailScreen
+import tn.rifq_android.ui.screens.medical.MedicalHistoryScreen
+import tn.rifq_android.ui.screens.medical.MedicalScreen
 
 @Composable
 fun MainScreen(
@@ -42,13 +51,40 @@ fun MainScreen(
 
             // Placeholder routes for other bottom nav items
             composable("clinic") {
-                // TODO: Implement ClinicScreen
-                PlaceholderScreen(title = "Clinic")
+                ClinicScreen(navController = navController)
             }
 
             composable("join") {
-                // TODO: Implement JoinScreen
-                PlaceholderScreen(title = "Join")
+                JoinScreen(navController = navController)
+            }
+
+            composable("add_pet") {
+                AddPetScreen(navController = navController)
+            }
+
+            composable("calendar") {
+                CalendarScreen(navController = navController)
+            }
+
+            composable("chat_ai") {
+                ChatAIScreen(navController = navController)
+            }
+
+            composable("petsitter") {
+                PetSitterScreen(navController = navController)
+            }
+
+            composable("pet_detail/{petId}") { backStackEntry ->
+                val petId = backStackEntry.arguments?.getString("petId")
+                PetDetailScreen(navController = navController, petId = petId)
+            }
+
+            composable("medical_history") {
+                MedicalHistoryScreen(navController = navController)
+            }
+
+            composable("medical") {
+                MedicalScreen(navController = navController)
             }
         }
     }
