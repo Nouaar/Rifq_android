@@ -20,8 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tn.rifq_android.R
-import tn.rifq_android.ui.theme.LoginBackground
-import tn.rifq_android.ui.theme.OrangePrimary
+import tn.rifq_android.ui.theme.*
 import tn.rifq_android.viewmodel.AuthUiState
 import tn.rifq_android.viewmodel.AuthViewModel
 
