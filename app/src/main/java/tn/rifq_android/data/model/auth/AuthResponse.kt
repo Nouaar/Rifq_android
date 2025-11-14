@@ -13,3 +13,7 @@ data class Tokens(
     val refreshToken: String
 )
 
+data class MessageResponse(
+    val message: String
+)
+

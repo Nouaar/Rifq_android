@@ -13,14 +13,22 @@ class UserRepository(private val api: UserApi) {
 
     suspend fun updateProfile(
         name: String? = null,
-        email: String? = null,
+        phoneNumber: String? = null,
+        country: String? = null,
+        city: String? = null,
+        hasPhoto: Boolean? = null,
+        hasPets: Boolean? = null,
         photoFile: File? = null
     ) = api.updateProfile(
         name = name?.toRequestBody("text/plain".toMediaTypeOrNull()),
-        email = email?.toRequestBody("text/plain".toMediaTypeOrNull()),
-        photo = photoFile?.let {
+        phoneNumber = phoneNumber?.toRequestBody("text/plain".toMediaTypeOrNull()),
+        country = country?.toRequestBody("text/plain".toMediaTypeOrNull()),
+        city = city?.toRequestBody("text/plain".toMediaTypeOrNull()),
+        hasPhoto = hasPhoto?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull()),
+        hasPets = hasPets?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull()),
+        image = photoFile?.let {
             val requestBody = it.asRequestBody("image/*".toMediaTypeOrNull())
-            MultipartBody.Part.createFormData("photo", it.name, requestBody)
+            MultipartBody.Part.createFormData("image", it.name, requestBody)
         }
     )
 

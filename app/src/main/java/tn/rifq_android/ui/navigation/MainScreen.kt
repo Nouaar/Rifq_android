@@ -25,6 +25,8 @@ import tn.rifq_android.ui.screens.medical.MedicalScreen
 
 @Composable
 fun MainScreen(
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToChangeEmail: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -45,6 +47,8 @@ fun MainScreen(
 
             composable("profile") {
                 ProfileScreen(
+                    onNavigateToChangePassword = onNavigateToChangePassword,
+                    onNavigateToChangeEmail = onNavigateToChangeEmail,
                     onLogout = onLogout
                 )
             }

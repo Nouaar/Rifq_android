@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -17,20 +18,28 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import tn.rifq_android.ui.theme.*
 import tn.rifq_android.viewmodel.auth.AuthUiState
 import tn.rifq_android.viewmodel.auth.AuthViewModel
+import tn.rifq_android.util.GoogleSignInHelper
 import tn.rifq_android.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     onNavigateToHome: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val googleSignInHelper = remember { GoogleSignInHelper(context) }
+
     val uiState by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf(TextFieldValue("")) }
     var password by remember { mutableStateOf(TextFieldValue("")) }
+    var googleSignInError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
@@ -41,6 +50,20 @@ fun LoginScreen(
                 viewModel.resetState()
             }
         }
+    }
+
+    // Show error dialog for Google Sign-In
+    if (googleSignInError != null) {
+        AlertDialog(
+            onDismissRequest = { googleSignInError = null },
+            title = { Text("Google Sign-In Failed") },
+            text = { Text(googleSignInError ?: "") },
+            confirmButton = {
+                TextButton(onClick = { googleSignInError = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Box(
@@ -155,7 +178,7 @@ fun LoginScreen(
                     Text("Sign Up", color = OrangePrimary)
                 }
                 Text(text = "|", color = Color.Gray, modifier = Modifier.padding(vertical = 12.dp))
-                TextButton(onClick = { /* TODO: Navigate to Forgot Password */ }) {
+                TextButton(onClick = onNavigateToForgotPassword) {
                     Text("Forgot Password?", color = OrangePrimary)
                 }
             }
@@ -173,7 +196,17 @@ fun LoginScreen(
 
             // Google Sign In Button
             OutlinedButton(
-                onClick = { /* TODO: Google Sign-In */ },
+                onClick = {
+                    coroutineScope.launch {
+                        val result = googleSignInHelper.signIn()
+                        result.onSuccess { idToken ->
+                            viewModel.googleSignIn(idToken)
+                        }.onFailure { error ->
+                            // Show user-friendly error dialog
+                            googleSignInError = error.message ?: "Google Sign-In failed. Please try again."
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),

@@ -1,7 +1,5 @@
 package tn.rifq_android.ui.screens.profile
 
-import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,8 +24,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.data.model.auth.User
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.util.ImageFileHelper
-import tn.rifq_android.util.rememberImagePicker
 
 /**
  * Dialog for editing profile information
@@ -38,29 +33,32 @@ import tn.rifq_android.util.rememberImagePicker
 fun EditProfileDialog(
     user: User,
     onDismiss: () -> Unit,
-    onSave: (String, String, java.io.File?) -> Unit
+    onSave: (name: String?, phoneNumber: String?, country: String?, city: String?, photoFile: java.io.File?) -> Unit
 ) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var name by remember { mutableStateOf(user.name) }
-    var email by remember { mutableStateOf(user.email) }
+    var phoneNumber by remember { mutableStateOf(user.phoneNumber ?: "") }
+    var country by remember { mutableStateOf(user.country ?: "") }
+    var city by remember { mutableStateOf(user.city ?: "") }
 
     // Image states
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var selectedImageFile by remember { mutableStateOf<java.io.File?>(null) }
 
     // Image picker
-    val imagePicker = rememberImagePicker { uri ->
+    val imagePicker = tn.rifq_android.util.rememberImagePicker { uri ->
         selectedImageUri = uri
         // Convert to file immediately
-        val file = ImageFileHelper.uriToFile(context, uri)
+        val file = tn.rifq_android.util.ImageFileHelper.uriToFile(context, uri)
         if (file != null) {
             selectedImageFile = file
-            Toast.makeText(context, "Photo selected!", Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(context, "Photo selected!", android.widget.Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(context, "Failed to process image", Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(context, "Failed to process image", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
+
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -123,7 +121,8 @@ fun EditProfileDialog(
                         Text(
                             text = if (selectedImageFile != null) "Photo selected ✓" else "Tap to change photo",
                             fontSize = 12.sp,
-                            color = if (selectedImageFile != null) OrangeAccent else TextSecondary
+                            color = if (selectedImageFile != null) OrangeAccent else TextSecondary,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -143,12 +142,42 @@ fun EditProfileDialog(
                     )
                 }
 
-                // Email Field
+                // Phone Number Field
                 item {
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") },
+                        value = phoneNumber,
+                        onValueChange = { phoneNumber = it },
+                        label = { Text("Phone Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OrangeAccent,
+                            focusedLabelColor = OrangeAccent
+                        )
+                    )
+                }
+
+                // Country Field
+                item {
+                    OutlinedTextField(
+                        value = country,
+                        onValueChange = { country = it },
+                        label = { Text("Country") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OrangeAccent,
+                            focusedLabelColor = OrangeAccent
+                        )
+                    )
+                }
+
+                // City Field
+                item {
+                    OutlinedTextField(
+                        value = city,
+                        onValueChange = { city = it },
+                        label = { Text("City") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -162,12 +191,18 @@ fun EditProfileDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank() && email.isNotBlank()) {
-                        onSave(name, email, selectedImageFile)
+                    if (name.isNotBlank()) {
+                        onSave(
+                            name.takeIf { it != user.name },
+                            phoneNumber.takeIf { it.isNotBlank() && it != user.phoneNumber },
+                            country.takeIf { it.isNotBlank() && it != user.country },
+                            city.takeIf { it.isNotBlank() && it != user.city },
+                            selectedImageFile
+                        )
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
-                enabled = name.isNotBlank() && email.isNotBlank()
+                enabled = name.isNotBlank()
             ) {
                 Text("Save")
             }

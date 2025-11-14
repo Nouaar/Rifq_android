@@ -34,6 +34,8 @@ import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToChangeEmail: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -159,12 +161,21 @@ fun ProfileScreen(
                             .background(PetAvatarBrown),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier.size(80.dp),
-                            tint = BlueAccent
-                        )
+                        if (state.user.profileImage != null) {
+                            androidx.compose.foundation.Image(
+                                painter = coil.compose.rememberAsyncImagePainter(state.user.profileImage),
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Person,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.size(80.dp),
+                                tint = BlueAccent
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -223,7 +234,11 @@ fun ProfileScreen(
 
                         InfoCard(label = "Email", value = state.user.email)
                         Spacer(modifier = Modifier.height(12.dp))
-                        InfoCard(label = "Phone", value = state.user.phone ?: "Not set")
+                        InfoCard(label = "Phone", value = state.user.phoneNumber ?: "Not set")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        InfoCard(label = "Country", value = state.user.country ?: "Not set")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        InfoCard(label = "City", value = state.user.city ?: "Not set")
                         Spacer(modifier = Modifier.height(12.dp))
                         InfoCard(label = "Balance", value = "${state.user.balance ?: 0} DT")
                     }
@@ -254,6 +269,26 @@ fun ProfileScreen(
                             onClick = { showEditDialog = true }
                         )
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        // Change Password - Only show for local users (not Google)
+                        if (state.user.provider != "google") {
+                            SettingsCard(
+                                icon = "🔑",
+                                label = "Change Password",
+                                onClick = onNavigateToChangePassword
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // Change Email - Only show for local users (not Google)
+                        if (state.user.provider != "google") {
+                            SettingsCard(
+                                icon = "✉️",
+                                label = "Change Email",
+                                onClick = onNavigateToChangeEmail
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
 
                         // Dark Mode Toggle
                         ThemeToggleCard(
@@ -329,10 +364,12 @@ fun ProfileScreen(
             EditProfileDialog(
                 user = (uiState as ProfileUiState.Success).user,
                 onDismiss = { showEditDialog = false },
-                onSave = { name, email, photoFile ->
+                onSave = { name, phoneNumber, country, city, photoFile ->
                     viewModel.updateProfileWithImage(
                         name = name,
-                        email = email,
+                        phoneNumber = phoneNumber,
+                        country = country,
+                        city = city,
                         photoFile = photoFile
                     )
                 }

@@ -1,10 +1,5 @@
 package tn.rifq_android.data.model.auth
 
-enum class UserRole(val value: String) {
-    OWNER("owner"),
-    SITTER("sitter"),
-    VET("vet")
-}
 
 data class RegisterRequest(
     val email: String,
@@ -22,3 +17,37 @@ data class LoginRequest(
     val email: String,
     val password: String
 )
+
+
+// Password Management
+data class ForgotPasswordRequest(
+    val email: String
+)
+
+data class ResetPasswordRequest(
+    val email: String,
+    val code: String,
+    val newPassword: String
+)
+
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
+
+// Email Management
+data class ChangeEmailRequest(
+    val newEmail: String,
+    val password: String
+)
+
+data class VerifyNewEmailRequest(
+    val newEmail: String,
+    val code: String
+)
+
+// Google Sign-In
+data class GoogleSignInRequest(
+    val id_token: String
+)
+

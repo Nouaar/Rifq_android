@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -19,29 +20,59 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import tn.rifq_android.R
 import tn.rifq_android.ui.theme.*
 import tn.rifq_android.viewmodel.auth.AuthUiState
 import tn.rifq_android.viewmodel.auth.AuthViewModel
+import tn.rifq_android.util.GoogleSignInHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
     onNavigateToVerify: (String) -> Unit,
+    onNavigateToHome: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val googleSignInHelper = remember { GoogleSignInHelper(context) }
+
     val uiState by viewModel.uiState.collectAsState()
     var name by remember { mutableStateOf(TextFieldValue("")) }
     var email by remember { mutableStateOf(TextFieldValue("")) }
     var password by remember { mutableStateOf(TextFieldValue("")) }
     var confirmPassword by remember { mutableStateOf(TextFieldValue("")) }
+    var googleSignInError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
-            onNavigateToVerify(email.text.trim())
+            val message = (uiState as AuthUiState.Success).message
+            // If it's a Google Sign-In success, go to home
+            if (message.contains("Login", ignoreCase = true) ||
+                message.contains("successful", ignoreCase = true)) {
+                onNavigateToHome()
+            } else {
+                // Regular registration - go to verify
+                onNavigateToVerify(email.text.trim())
+            }
             viewModel.resetState()
         }
+    }
+
+    // Show error dialog for Google Sign-In
+    if (googleSignInError != null) {
+        AlertDialog(
+            onDismissRequest = { googleSignInError = null },
+            title = { Text("Google Sign-Up Failed") },
+            text = { Text(googleSignInError ?: "") },
+            confirmButton = {
+                TextButton(onClick = { googleSignInError = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Box(
@@ -220,7 +251,17 @@ fun RegisterScreen(
 
             // Google Sign Up Button
             OutlinedButton(
-                onClick = { /* TODO: Google Sign-Up */ },
+                onClick = {
+                    coroutineScope.launch {
+                        val result = googleSignInHelper.signIn()
+                        result.onSuccess { idToken ->
+                            viewModel.googleSignIn(idToken)
+                        }.onFailure { error ->
+                            // Show user-friendly error dialog
+                            googleSignInError = error.message ?: "Google Sign-Up failed. Please try again."
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),

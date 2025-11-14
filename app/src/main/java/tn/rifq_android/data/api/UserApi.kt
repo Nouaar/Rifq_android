@@ -15,8 +15,12 @@ interface UserApi {
     @PATCH("users/profile")
     suspend fun updateProfile(
         @Part("name") name: RequestBody? = null,
-        @Part("email") email: RequestBody? = null,
-        @Part photo: MultipartBody.Part? = null
+        @Part("phoneNumber") phoneNumber: RequestBody? = null,
+        @Part("country") country: RequestBody? = null,
+        @Part("city") city: RequestBody? = null,
+        @Part("hasPhoto") hasPhoto: RequestBody? = null,
+        @Part("hasPets") hasPets: RequestBody? = null,
+        @Part image: MultipartBody.Part? = null
     ): Response<AuthUser>
 
     @DELETE("users/profile")

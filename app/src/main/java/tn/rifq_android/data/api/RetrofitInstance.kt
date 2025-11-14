@@ -75,27 +75,40 @@ object RetrofitInstance {
     // Authenticator to handle 401 by refreshing token once
     private val tokenAuthenticator = Authenticator { route: Route?, response: Response ->
         // Avoid infinite loops: if we've already attempted with a refreshed token, give up
-        if (responseCount(response) >= 2) return@Authenticator null
+        if (responseCount(response) >= 2) {
+            // Clear invalid tokens
+            runBlocking { tokenManager?.clearTokens() }
+            return@Authenticator null
+        }
 
         val manager = tokenManager ?: return@Authenticator null
 
         // Get refresh token
         val refreshToken = runBlocking { manager.getRefreshToken().firstOrNull() }
-        if (refreshToken.isNullOrEmpty()) return@Authenticator null
+        if (refreshToken.isNullOrEmpty()) {
+            runBlocking { manager.clearTokens() }
+            return@Authenticator null
+        }
 
         // Call refresh endpoint
         val refreshResponse = try {
             runBlocking { refreshApi.refresh(RefreshRequest(refreshToken)) }
         } catch (e: Exception) {
-            null
-        }
-
-        if (refreshResponse == null || !refreshResponse.isSuccessful) {
-            // Refresh failed
+            // Network error or server issue - don't clear tokens, might be temporary
             return@Authenticator null
         }
 
-        val tokens = refreshResponse.body()?.tokens ?: return@Authenticator null
+        if (refreshResponse == null || !refreshResponse.isSuccessful) {
+            // Refresh failed - tokens are invalid, clear them
+            runBlocking { manager.clearTokens() }
+            return@Authenticator null
+        }
+
+        val tokens = refreshResponse.body()?.tokens
+        if (tokens == null) {
+            runBlocking { manager.clearTokens() }
+            return@Authenticator null
+        }
 
         // Persist new tokens
         runBlocking { manager.saveTokens(tokens.accessToken, tokens.refreshToken) }

@@ -1,10 +1,7 @@
 package tn.rifq_android.data.repository
 
 import tn.rifq_android.data.api.AuthApi
-import tn.rifq_android.data.model.auth.AuthResponse
-import tn.rifq_android.data.model.auth.LoginRequest
-import tn.rifq_android.data.model.auth.RegisterRequest
-import tn.rifq_android.data.model.auth.VerifyEmailRequest
+import tn.rifq_android.data.model.auth.*
 import retrofit2.Response
 
 class AuthRepository(private val api: AuthApi) {
@@ -19,5 +16,32 @@ class AuthRepository(private val api: AuthApi) {
 
     suspend fun login(request: LoginRequest): Response<AuthResponse> {
         return api.login(request)
+    }
+
+    // Password Management
+    suspend fun forgotPassword(request: ForgotPasswordRequest): Response<MessageResponse> {
+        return api.forgotPassword(request)
+    }
+
+    suspend fun resetPassword(request: ResetPasswordRequest): Response<MessageResponse> {
+        return api.resetPassword(request)
+    }
+
+    suspend fun changePassword(request: ChangePasswordRequest): Response<MessageResponse> {
+        return api.changePassword(request)
+    }
+
+    // Email Management
+    suspend fun changeEmail(request: ChangeEmailRequest): Response<MessageResponse> {
+        return api.changeEmail(request)
+    }
+
+    suspend fun verifyNewEmail(request: VerifyNewEmailRequest): Response<MessageResponse> {
+        return api.verifyNewEmail(request)
+    }
+
+    // Google Sign-In
+    suspend fun googleSignIn(request: GoogleSignInRequest): Response<AuthResponse> {
+        return api.googleSignIn(request)
     }
 }

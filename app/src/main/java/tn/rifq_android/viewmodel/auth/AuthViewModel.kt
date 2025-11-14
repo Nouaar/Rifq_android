@@ -137,4 +137,196 @@ class AuthViewModel(
     fun resetState() {
         _uiState.value = AuthUiState.Idle
     }
+
+    // Password Management
+    fun forgotPassword(email: String) {
+        if (email.isBlank()) {
+            _uiState.value = AuthUiState.Error("Please enter your email")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.forgotPassword(
+                    tn.rifq_android.data.model.auth.ForgotPasswordRequest(email = email)
+                )
+                if (response.isSuccessful) {
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Password reset code sent to your email"
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Failed to send reset code")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun resetPassword(email: String, code: String, newPassword: String) {
+        if (email.isBlank() || code.isBlank() || newPassword.isBlank()) {
+            _uiState.value = AuthUiState.Error("All fields are required")
+            return
+        }
+
+        if (newPassword.length < 6) {
+            _uiState.value = AuthUiState.Error("Password must be at least 6 characters")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.resetPassword(
+                    tn.rifq_android.data.model.auth.ResetPasswordRequest(
+                        email = email,
+                        code = code,
+                        newPassword = newPassword
+                    )
+                )
+                if (response.isSuccessful) {
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Password reset successfully!"
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Failed to reset password")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun changePassword(currentPassword: String, newPassword: String) {
+        if (currentPassword.isBlank() || newPassword.isBlank()) {
+            _uiState.value = AuthUiState.Error("All fields are required")
+            return
+        }
+
+        if (newPassword.length < 6) {
+            _uiState.value = AuthUiState.Error("New password must be at least 6 characters")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.changePassword(
+                    tn.rifq_android.data.model.auth.ChangePasswordRequest(
+                        currentPassword = currentPassword,
+                        newPassword = newPassword
+                    )
+                )
+                if (response.isSuccessful) {
+                    // Clear tokens since backend invalidates them
+                    tokenManager.clearTokens()
+                    userManager.clearUserId()
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Password changed! Please login again."
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Failed to change password")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    // Email Management
+    fun changeEmail(newEmail: String, password: String) {
+        if (newEmail.isBlank() || password.isBlank()) {
+            _uiState.value = AuthUiState.Error("All fields are required")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.changeEmail(
+                    tn.rifq_android.data.model.auth.ChangeEmailRequest(
+                        newEmail = newEmail,
+                        password = password
+                    )
+                )
+                if (response.isSuccessful) {
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Verification code sent to new email"
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Failed to change email")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    fun verifyNewEmail(newEmail: String, code: String) {
+        if (newEmail.isBlank() || code.isBlank()) {
+            _uiState.value = AuthUiState.Error("All fields are required")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.verifyNewEmail(
+                    tn.rifq_android.data.model.auth.VerifyNewEmailRequest(
+                        newEmail = newEmail,
+                        code = code
+                    )
+                )
+                if (response.isSuccessful) {
+                    // Clear tokens since backend invalidates them
+                    tokenManager.clearTokens()
+                    userManager.clearUserId()
+                    _uiState.value = AuthUiState.Success(
+                        response.body()?.message ?: "Email changed! Please login with new email."
+                    )
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Failed to verify new email")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
+
+    // Google Sign-In
+    fun googleSignIn(idToken: String) {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.googleSignIn(
+                    tn.rifq_android.data.model.auth.GoogleSignInRequest(id_token = idToken)
+                )
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.tokens != null && body.user != null) {
+                        tokenManager.saveTokens(
+                            accessToken = body.tokens.accessToken,
+                            refreshToken = body.tokens.refreshToken
+                        )
+                        val userId = body.user.id ?: body.user.email
+                        userManager.saveUserId(userId)
+                        _uiState.value = AuthUiState.Success("Login successful!")
+                    } else {
+                        _uiState.value = AuthUiState.Error("Invalid server response.")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = AuthUiState.Error(errorBody ?: "Google Sign-In failed.")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error. Please try again.")
+            }
+        }
+    }
 }

@@ -1,0 +1,11 @@
+# local.properties.example
+# Copy this file to local.properties and fill in your values
+
+
+sdk.dir=/path/to/your/android/sdk
+
+# Google Sign-In Web Client ID
+# Get this from your backend .env file or Google Cloud Console
+# This should match the GOOGLE_IOS_CLIENT_ID or GOOGLE_WEB_CLIENT_ID in your backend
+GOOGLE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID_HERE.apps.googleusercontent.com
+

@@ -8,7 +8,14 @@ data class User(
     val email: String,
     val role: String,
     val phone: String? = null,
+    val phoneNumber: String? = null,
+    val country: String? = null,
+    val city: String? = null,
     val profileImage: String? = null,
+    val hasPhoto: Boolean? = null,
+    val hasPets: Boolean? = null,
     val balance: Double? = null,
-    val isVerified: Boolean? = null
+    val isVerified: Boolean? = null,
+    val provider: String? = "local", // "local" or "google"
+    val providerId: String? = null
 )

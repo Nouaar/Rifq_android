@@ -115,49 +115,28 @@ class ProfileViewModel(
         }
     }
 
-    fun updateProfile(name: String, phone: String?) {
-        viewModelScope.launch {
-            _actionState.value = ProfileAction.Loading
-            try {
-                val userId = getUserIdFromToken()
-                if (userId.isNullOrBlank()) {
-                    _actionState.value = ProfileAction.Error("User not authenticated")
-                    return@launch
-                }
-
-                val response = repository.updateProfile(
-                    userId,
-                    UpdateProfileRequest(name = name, phone = phone)
-                )
-                if (response.isSuccessful) {
-                    _actionState.value = ProfileAction.Success("Profile updated successfully")
-                    loadProfile()
-                } else {
-                    _actionState.value = ProfileAction.Error(
-                        response.errorBody()?.string() ?: "Failed to update profile"
-                    )
-                }
-            } catch (e: Exception) {
-                _actionState.value = ProfileAction.Error(
-                    e.message ?: "Network error. Please try again."
-                )
-            }
-        }
-    }
 
     fun updateProfileWithImage(
         name: String? = null,
-        email: String? = null,
+        phoneNumber: String? = null,
+        country: String? = null,
+        city: String? = null,
+        hasPhoto: Boolean? = null,
+        hasPets: Boolean? = null,
         photoFile: File? = null
     ) {
         viewModelScope.launch {
             _actionState.value = ProfileAction.Loading
             try {
-                Log.d(TAG, "Updating profile with name: $name, email: $email, photoFile: ${photoFile?.name}")
+                Log.d(TAG, "Updating profile with name: $name, phoneNumber: $phoneNumber, country: $country, city: $city, photoFile: ${photoFile?.name}")
 
                 val response = userRepository.updateProfile(
                     name = name,
-                    email = email,
+                    phoneNumber = phoneNumber,
+                    country = country,
+                    city = city,
+                    hasPhoto = hasPhoto,
+                    hasPets = hasPets,
                     photoFile = photoFile
                 )
 
