@@ -45,14 +45,16 @@ fun BottomNavBar(navController: NavHostController) {
         else -> VetTab.HOME
     }
 
+    val centerButtonSpace = 86.dp
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(90.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Background with rounded rectangle, shadow, and border
-        Surface(
+        // Background with rounded rectangle, shadow, and border (iOS Reference: VetTabBar.swift lines 38-44)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(74.dp)
@@ -61,114 +63,107 @@ fun BottomNavBar(navController: NavHostController) {
                     shape = RoundedCornerShape(28.dp),
                     spotColor = Color.Black.copy(alpha = 0.06f)
                 )
+                .background(
+                    CardBackground,
+                    RoundedCornerShape(28.dp)
+                )
                 .border(
                     width = 1.dp,
                     color = VetStroke.copy(alpha = 0.35f),
                     shape = RoundedCornerShape(28.dp)
-                ),
-            shape = RoundedCornerShape(28.dp),
-            color = CardBackground
+                )
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    StandardTabButton(
-                        tab = VetTab.HOME,
-                        isSelected = selectedTab == VetTab.HOME,
-                        onClick = {
-                            if (selectedTab != VetTab.HOME) {
-                                navController.navigate("home") {
-                                    popUpTo("home") { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    StandardTabButton(
-                        tab = VetTab.DISCOVER,
-                        isSelected = selectedTab == VetTab.DISCOVER,
-                        onClick = {
-                            if (selectedTab != VetTab.DISCOVER) {
-                                navController.navigate("discover") {
-                                    popUpTo("home") { inclusive = false }
-                                    launchSingleTop = true
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                CenterAIButton(
-                    isSelected = selectedTab == VetTab.AI,
+                // Left side: Home and Discover (iOS Reference: VetTabBar.swift lines 47-48)
+                StandardTabButton(
+                    tab = VetTab.HOME,
+                    isSelected = selectedTab == VetTab.HOME,
                     onClick = {
-                        if (selectedTab != VetTab.AI) {
-                            navController.navigate("chat_ai") {
+                        if (selectedTab != VetTab.HOME) {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                StandardTabButton(
+                    tab = VetTab.DISCOVER,
+                    isSelected = selectedTab == VetTab.DISCOVER,
+                    onClick = {
+                        if (selectedTab != VetTab.DISCOVER) {
+                            navController.navigate("discover") {
                                 popUpTo("home") { inclusive = false }
                                 launchSingleTop = true
                             }
                         }
-                    }
+                    },
+                    modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                // Reserve space for floating AI button (iOS Reference: VetTabBar.swift lines 50-54)
+                Spacer(modifier = Modifier.width(centerButtonSpace))
 
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    StandardTabButton(
-                        tab = VetTab.MY_PETS,
-                        isSelected = selectedTab == VetTab.MY_PETS,
-                        onClick = {
-                            if (selectedTab != VetTab.MY_PETS) {
-                                navController.navigate("mypets") {
-                                    popUpTo("home") { inclusive = false }
-                                    launchSingleTop = true
-                                }
+                // Right side: My Pets and Profile (iOS Reference: VetTabBar.swift lines 56-57)
+                StandardTabButton(
+                    tab = VetTab.MY_PETS,
+                    isSelected = selectedTab == VetTab.MY_PETS,
+                    onClick = {
+                        if (selectedTab != VetTab.MY_PETS) {
+                            navController.navigate("mypets") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
                             }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
 
-                    StandardTabButton(
-                        tab = VetTab.PROFILE,
-                        isSelected = selectedTab == VetTab.PROFILE,
-                        onClick = {
-                            if (selectedTab != VetTab.PROFILE) {
-                                navController.navigate("profile") {
-                                    popUpTo("home") { inclusive = false }
-                                    launchSingleTop = true
-                                }
+                StandardTabButton(
+                    tab = VetTab.PROFILE,
+                    isSelected = selectedTab == VetTab.PROFILE,
+                    onClick = {
+                        if (selectedTab != VetTab.PROFILE) {
+                            navController.navigate("profile") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
                             }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
+
+        CenterAIButton(
+            isSelected = selectedTab == VetTab.AI,
+            onClick = {
+                if (selectedTab != VetTab.AI) {
+                    navController.navigate("chat_ai") {
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
+                    }
+                }
+            },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
 enum class VetTab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Default.Home),
     DISCOVER("Discover", Icons.Default.LocationOn),
-    AI("AI", Icons.Default.Star), // Using Star as alternative to AutoAwesome
-    MY_PETS("My Pets", Icons.Default.Favorite), // Using Favorite as alternative to Pets
-    PROFILE("Profile", Icons.Default.Person)
+    AI("AI", Icons.Default.Star), // iOS: "sparkles" - using Star as closest match
+    MY_PETS("My Pets", Icons.Default.Favorite), // iOS: "pawprint.fill" - using Favorite as closest match
+    PROFILE("Profile", Icons.Default.Person) // iOS: "person.crop.circle.fill" - using Person
 }
 
 @Composable
@@ -178,13 +173,13 @@ private fun StandardTabButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val circleSize by animateDpAsState(
-        targetValue = if (isSelected) 34.dp else 30.dp,
+    val iconScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1.0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
-        label = "tabIconSize"
+        label = "iconScale"
     )
 
     Box(
@@ -199,37 +194,25 @@ private fun StandardTabButton(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(horizontal = 6.dp)
         ) {
-            Box(
+            Icon(
+                imageVector = tab.icon,
+                contentDescription = tab.title,
                 modifier = Modifier
-                    .size(circleSize)
-                    .clip(CircleShape)
-                    .background(
-                        if (isSelected) VetCanyon else CardBackground
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (isSelected) Color.Transparent else VetStroke.copy(alpha = 0.6f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = tab.icon,
-                    contentDescription = tab.title,
-                    modifier = Modifier.size(16.dp),
-                    tint = if (isSelected) Color.White else TextSecondary
-                )
-            }
+                    .size(18.dp)
+                    .scale(iconScale),
+                tint = if (isSelected) VetCanyon else TextSecondary
+            )
 
             Text(
                 text = tab.title,
                 fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = if (isSelected) VetCanyon else TextSecondary,
-                maxLines = 1
+                maxLines = 1,
+                minLines = 1
             )
         }
     }
@@ -238,7 +221,8 @@ private fun StandardTabButton(
 @Composable
 private fun CenterAIButton(
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val size by animateFloatAsState(
         targetValue = if (isSelected) 74f else 68f,
@@ -259,13 +243,14 @@ private fun CenterAIButton(
     )
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .offset(y = (-24).dp)
             .size(size.dp)
             .shadow(
-                elevation = 10.dp,
+                elevation = 8.dp,
                 shape = CircleShape,
-                spotColor = VetCanyon.copy(alpha = 0.28f)
+                spotColor = VetCanyon.copy(alpha = 0.28f),
+                ambientColor = Color.Transparent
             )
             .clip(CircleShape)
             .background(
@@ -286,7 +271,7 @@ private fun CenterAIButton(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.scale(scale)
         ) {
             Icon(
@@ -295,12 +280,12 @@ private fun CenterAIButton(
                 modifier = Modifier.size(26.dp),
                 tint = Color.White
             )
-            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "AI",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = if (isSelected) 1.0f else 0.85f)
+                color = Color.White.copy(alpha = if (isSelected) 1.0f else 0.85f),
+                maxLines = 1
             )
         }
     }
