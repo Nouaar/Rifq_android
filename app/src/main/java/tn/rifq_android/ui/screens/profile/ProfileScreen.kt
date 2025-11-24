@@ -38,6 +38,7 @@ import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    navController: androidx.navigation.NavHostController,
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToChangeEmail: () -> Unit = {},
     onNavigateToJoin: () -> Unit = {},
@@ -64,7 +65,17 @@ fun ProfileScreen(
         viewModel.loadProfile()
     }
     
+    // Profile completion check (iOS Reference: ProfileView.swift lines 200-250)
+    // Navigate to edit profile if profile is incomplete
     LaunchedEffect(uiState) {
+        if (uiState is ProfileUiState.Success) {
+            val user = (uiState as ProfileUiState.Success).user
+            if (tn.rifq_android.util.ProfileCompletionUtil.requiresProfileCompletion(user)) {
+                // Navigate to edit profile screen
+                navController.navigate("edit_profile")
+            }
+        }
+        
         if (uiState is ProfileUiState.UserDeleted) {
             onLogout()
         }

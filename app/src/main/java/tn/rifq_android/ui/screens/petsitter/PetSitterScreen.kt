@@ -50,6 +50,13 @@ fun PetSitterScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
+    // Ensure sitters are loaded
+    LaunchedEffect(Unit) {
+        if (sitters.isEmpty() && !isLoading) {
+            viewModel.loadSitters()
+        }
+    }
+
 
     var isVisible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
@@ -152,14 +159,149 @@ fun PetSitterScreen(
 
             item {
                 Button(
-                    onClick = { /* TODO: Implement action */ },
+                    onClick = { 
+                        // Navigate to available sitters screen (iOS Reference: PetSitterView.swift line 64)
+                        navController.navigate("available_sitters")
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = VetCanyon)
                 ) {
-                    Text("Action")
+                    Text("SEARCH SITTERS", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
+
+            // Recent Sitters Section (iOS Reference: PetSitterView.swift lines 77-94)
+            if (sitters.isNotEmpty()) {
+                item {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Recent Sitters",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+
+                        if (isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = VetCanyon)
+                            }
+                        } else if (error != null) {
+                            Text(
+                                text = "Error: $error",
+                                fontSize = 14.sp,
+                                color = ErrorRed,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        } else {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Show first 2-3 sitters as "Recent"
+                                sitters.take(3).forEach { sitter ->
+                                    SitterRow(
+                                        sitter = sitter,
+                                        onClick = {
+                                            navController.navigate("sitter_profile/${sitter.userId}")
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SitterRow(
+    sitter: SitterCard,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, VetStroke),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(sitter.tint, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = sitter.emoji,
+                    fontSize = 22.sp
+                )
+            }
+
+            // Info
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = sitter.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(10.dp),
+                        tint = StarColor
+                    )
+                    Text(
+                        text = String.format("%.1f", sitter.rating),
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "(0 reviews)", // TODO: Add reviews count when available
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            // Arrow
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(CardBackground, CircleShape)
+                    .padding(8.dp),
+                tint = TextPrimary.copy(alpha = 0.8f)
+            )
         }
     }
 }

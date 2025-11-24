@@ -29,6 +29,7 @@ import tn.rifq_android.ui.screens.calendar.CalendarScreen
 import tn.rifq_android.ui.screens.join.JoinScreen
 import tn.rifq_android.ui.screens.chat.ChatAIScreen
 import tn.rifq_android.ui.screens.petsitter.PetSitterScreen
+import tn.rifq_android.ui.screens.petsitter.AvailableSittersScreen
 import tn.rifq_android.ui.screens.vet.FindVetScreen
 import tn.rifq_android.ui.screens.medical.MedicalHistoryScreen
 import tn.rifq_android.ui.screens.medical.MedicalScreen
@@ -95,8 +96,8 @@ fun MainScreen(
                 TextButton(
                     onClick = {
                         showProfileCompletionAlert = false
-                        shouldPresentEditProfile = true
-                        navController.navigate("profile")
+                        // Navigate directly to edit profile screen (iOS Reference: MainTabView.swift line 77)
+                        navController.navigate("edit_profile")
                     }
                 ) {
                     Text("Complete Now")
@@ -278,15 +279,16 @@ fun MainScreen(
             }
 
             // iOS tab: Profile
-            composable("profile") {
-                ProfileScreen(
-                    onNavigateToChangePassword = onNavigateToChangePassword,
-                    onNavigateToChangeEmail = onNavigateToChangeEmail,
-                    onNavigateToJoin = { navController.navigate("join_team") },
-                    onNavigateToSubscription = { navController.navigate("subscription_management") },
-                    onLogout = onLogout
-                )
-            }
+                    composable("profile") {
+                        ProfileScreen(
+                            navController = navController,
+                            onNavigateToChangePassword = onNavigateToChangePassword,
+                            onNavigateToChangeEmail = onNavigateToChangeEmail,
+                            onNavigateToJoin = { navController.navigate("join_team") },
+                            onNavigateToSubscription = { navController.navigate("subscription_management") },
+                            onLogout = onLogout
+                        )
+                    }
 
             // Additional screens
             composable("join") {
@@ -343,6 +345,13 @@ fun MainScreen(
                 PetSitterScreen(
                     navController = navController,
                     themePreference = themePreference
+                )
+            }
+
+            // Available Sitters Screen (iOS Reference: AvailableSittersView.swift)
+            composable("available_sitters") {
+                AvailableSittersScreen(
+                    navController = navController
                 )
             }
 
