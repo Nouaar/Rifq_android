@@ -27,6 +27,12 @@ class PetViewModel(
 
     private val _uiState = MutableStateFlow<PetUiState>(PetUiState.Idle)
     val uiState: StateFlow<PetUiState> = _uiState
+    
+    private val _pets = MutableStateFlow<List<Pet>>(emptyList())
+    val pets: StateFlow<List<Pet>> = _pets
+    
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading
 
     companion object {
         private const val TAG = "PetViewModel"
@@ -38,6 +44,34 @@ class PetViewModel(
             null
         } else {
             JwtDecoder.getUserIdFromToken(token)
+        }
+    }
+    
+    fun loadPets() {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val userId = getUserIdFromToken()
+                if (userId.isNullOrBlank()) {
+                    Log.e(TAG, "User not authenticated")
+                    _loading.value = false
+                    return@launch
+                }
+
+                val response = repository.getPetsByOwner(userId)
+                if (response.isSuccessful) {
+                    _pets.value = response.body() ?: emptyList()
+                    Log.d(TAG, "Loaded ${_pets.value.size} pets")
+                } else {
+                    Log.e(TAG, "Failed to load pets: ${response.errorBody()?.string()}")
+                    _pets.value = emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception loading pets", e)
+                _pets.value = emptyList()
+            } finally {
+                _loading.value = false
+            }
         }
     }
 

@@ -37,8 +37,11 @@ class PetsRepository(private val api: PetsApi) {
         height = height?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull()),
         microchipId = microchipId?.toRequestBody("text/plain".toMediaTypeOrNull()),
         photo = photoFile?.let {
-            val requestBody = it.asRequestBody("image/*".toMediaTypeOrNull())
-            MultipartBody.Part.createFormData("photo", it.name, requestBody)
+            MultipartBody.Part.createFormData(
+                "photo",
+                photoFile.name,
+                photoFile.asRequestBody("image/*".toMediaTypeOrNull())
+            )
         }
     )
 
@@ -66,11 +69,13 @@ class PetsRepository(private val api: PetsApi) {
         height = height?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull()),
         microchipId = microchipId?.toRequestBody("text/plain".toMediaTypeOrNull()),
         photo = photoFile?.let {
-            val requestBody = it.asRequestBody("image/*".toMediaTypeOrNull())
-            MultipartBody.Part.createFormData("photo", it.name, requestBody)
+            MultipartBody.Part.createFormData(
+                "photo",
+                photoFile.name,
+                photoFile.asRequestBody("image/*".toMediaTypeOrNull())
+            )
         }
     )
 
     suspend fun deletePet(ownerId: String, petId: String) = api.deletePet(ownerId, petId)
 }
-

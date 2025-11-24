@@ -27,11 +27,13 @@ class UserRepository(private val api: UserApi) {
         hasPhoto = hasPhoto?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull()),
         hasPets = hasPets?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull()),
         image = photoFile?.let {
-            val requestBody = it.asRequestBody("image/*".toMediaTypeOrNull())
-            MultipartBody.Part.createFormData("image", it.name, requestBody)
+            MultipartBody.Part.createFormData(
+                "image",
+                photoFile.name,
+                photoFile.asRequestBody("image/*".toMediaTypeOrNull())
+            )
         }
     )
 
     suspend fun deleteAccount() = api.deleteAccount()
 }
-

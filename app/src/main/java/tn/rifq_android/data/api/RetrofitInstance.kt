@@ -58,6 +58,9 @@ object RetrofitInstance {
 
     private val moshi: Moshi by lazy {
         Moshi.Builder()
+            .add(tn.rifq_android.data.model.notification.RecipientAdapter())
+            .add(tn.rifq_android.data.model.booking.PetAdapter())
+            .add(tn.rifq_android.data.model.chat.MessageAdapter())
             .add(KotlinJsonAdapterFactory())
             .build()
     }
@@ -154,4 +157,11 @@ object RetrofitInstance {
     val profileApi: ProfileApi by lazy { retrofit.create(ProfileApi::class.java) }
     val petsApi: PetsApi by lazy { retrofit.create(PetsApi::class.java) }
     val userApi: UserApi by lazy { retrofit.create(UserApi::class.java) }
+    val chatApi: ChatApi by lazy { retrofit.create(ChatApi::class.java) }
+    val vetSitterApi: VetSitterApi by lazy { retrofit.create(VetSitterApi::class.java) }
+    val aiApi: AIApi by lazy { retrofit.create(AIApi::class.java) }
+    val bookingApi: BookingApi by lazy { retrofit.create(BookingApi::class.java) }
+    val notificationApi: NotificationApi by lazy { retrofit.create(NotificationApi::class.java) }
+    val subscriptionApi: SubscriptionApi by lazy { retrofit.create(SubscriptionApi::class.java) }
+    val medicalHistoryApi: MedicalHistoryApi by lazy { retrofit.create(MedicalHistoryApi::class.java) }
 }

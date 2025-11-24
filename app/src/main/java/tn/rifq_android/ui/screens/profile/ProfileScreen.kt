@@ -36,6 +36,8 @@ import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 fun ProfileScreen(
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToChangeEmail: () -> Unit = {},
+    onNavigateToJoin: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -45,7 +47,6 @@ fun ProfileScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val themePreference = remember { ThemePreference(context) }
-    val isDarkMode by themePreference.isDarkMode.collectAsState(initial = false)
 
     // Dialog states
     var showEditDialog by remember { mutableStateOf(false) }
@@ -86,23 +87,7 @@ fun ProfileScreen(
         topBar = {
             TopNavBar(
                 title = "Profile",
-                showBackButton = false,
-                actions = {
-                    IconButton(onClick = { /* Handle notification */ }) {
-                        Icon(
-                            imageVector = Icons.Filled.Notifications,
-                            contentDescription = "Notifications",
-                            tint = OrangeAccent
-                        )
-                    }
-                    IconButton(onClick = { viewModel.loadProfile() }) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings",
-                            tint = TextSecondary
-                        )
-                    }
-                }
+                showBackButton = false
             )
         },
         containerColor = PageBackground
@@ -290,14 +275,11 @@ fun ProfileScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
-                        // Dark Mode Toggle
-                        ThemeToggleCard(
-                            isDarkMode = isDarkMode,
-                            onToggle = { enabled ->
-                                coroutineScope.launch {
-                                    themePreference.setDarkMode(enabled)
-                                }
-                            }
+                        // Subscription Management - Show for all users
+                        SettingsCard(
+                            icon = "💳",
+                            label = "Subscription Management",
+                            onClick = onNavigateToSubscription
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -312,6 +294,40 @@ fun ProfileScreen(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
+
+                    // Join Us Button
+                    Button(
+                        onClick = onNavigateToJoin,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = VetCanyon
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = androidx.compose.ui.graphics.Color.White
+                            )
+                            Text(
+                                "JOIN US",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                letterSpacing = 0.5.sp
+                            )
+                            Spacer(modifier = Modifier.width(24.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Log Out Button
                     OutlinedButton(

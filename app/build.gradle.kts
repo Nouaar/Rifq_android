@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services") version "4.4.0" apply false
 }
 
 android {
@@ -17,7 +18,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Read Google Web Client ID from local.properties
+        // Read tokens from local.properties
         val properties = org.jetbrains.kotlin.konan.properties.Properties()
         val localPropertiesFile = rootProject.file("local.properties")
         if (localPropertiesFile.exists()) {
@@ -29,6 +30,21 @@ android {
             "GOOGLE_WEB_CLIENT_ID",
             "\"${properties.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\""
         )
+
+        buildConfigField(
+            "String",
+            "MAPBOX_ACCESS_TOKEN",
+            "\"${properties.getProperty("MAPBOX_ACCESS_TOKEN", "")}\""
+        )
+
+        // Add Mapbox token to manifest
+        manifestPlaceholders["MAPBOX_ACCESS_TOKEN"] = properties.getProperty("MAPBOX_ACCESS_TOKEN", "")
+        
+        ndk {
+            // Specify ABIs to build for (arm64-v8a supports 16KB pages)
+            abiFilters.clear()
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
     }
 
     buildTypes {
@@ -43,6 +59,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -51,9 +68,23 @@ android {
         compose = true
         buildConfig = true  // Enable BuildConfig generation
     }
+    
+    packaging {
+        jniLibs {
+            // Set to true to match android:extractNativeLibs="true" in AndroidManifest.xml
+            // This ensures proper 16 KB page size alignment for Android 15+ devices
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 }
 
 dependencies {
+    // Core library desugaring for java.time APIs on API < 26
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+    
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -96,6 +127,23 @@ dependencies {
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // Mapbox SDK - 11.0.0 with 16KB page size compatibility via useLegacyPackaging
+    implementation("com.mapbox.maps:android:11.0.0")
+    implementation("com.mapbox.extension:maps-compose:11.0.0")
+
+    // Firebase - FCM Push Notifications (iOS Reference: FCMManager.swift)
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    
+    // Socket.IO - Real-time chat (iOS Reference: SocketManager.swift)
+    implementation("io.socket:socket.io-client:2.1.0")
+    
+    // Stripe Android SDK for PaymentSheet
+    // Official: https://github.com/stripe/stripe-android
+    // Docs: https://docs.stripe.com/payments/accept-a-payment?platform=android&ui=payment-sheet
+    implementation("com.stripe:stripe-android:21.0.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

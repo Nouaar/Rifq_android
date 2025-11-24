@@ -14,6 +14,10 @@ class AuthRepository(private val api: AuthApi) {
         return api.verifyEmail(request)
     }
 
+    suspend fun resendVerificationCode(request: ResendVerificationRequest): Response<MessageResponse> {
+        return api.resendVerificationCode(request)
+    }
+
     suspend fun login(request: LoginRequest): Response<AuthResponse> {
         return api.login(request)
     }

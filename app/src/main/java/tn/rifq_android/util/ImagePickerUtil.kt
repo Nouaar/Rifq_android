@@ -5,9 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 
-/**
- * Composable for image picking functionality
- */
 @Composable
 fun rememberImagePicker(onImagePicked: (Uri) -> Unit): () -> Unit {
     val launcher = rememberLauncherForActivityResult(
@@ -15,7 +12,7 @@ fun rememberImagePicker(onImagePicked: (Uri) -> Unit): () -> Unit {
     ) { uri: Uri? ->
         uri?.let { onImagePicked(it) }
     }
-
+    
     return { launcher.launch("image/*") }
 }
 

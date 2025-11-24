@@ -2,14 +2,10 @@ package tn.rifq_android.util
 
 import androidx.compose.ui.unit.dp
 
-/**
- * Centralized constants for the application
- * Eliminates magic strings and numbers throughout the codebase
- */
 object Constants {
 
     object Api {
-        const val BASE_URL = "https://rifq.onrender.com/"
+        const val BASE_URL = "https://rifq.onrender.com"
         const val TIMEOUT_SECONDS = 30L
     }
 

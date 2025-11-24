@@ -107,3 +107,8 @@ val DarkSurface = Color(0xFF1E1E1E)
 val DarkOnBackground = Color(0xFFE0E0E0)
 val DarkOnSurface = Color(0xFFE0E0E0)
 val White = Color(0xFFFFFFFF)
+
+// Vet/Sitter Theme Colors (matching iOS)
+val VetCanyon = Color(0xFFD4845D) // Orange accent color for vet/sitter
+val VetStroke = Color(0xFFE0E0E0) // Border/stroke color
+val VetInputBackground = Color(0xFFF5F5F5) // Input field background color

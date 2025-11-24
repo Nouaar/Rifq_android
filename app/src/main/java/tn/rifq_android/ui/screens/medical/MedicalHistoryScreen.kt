@@ -38,11 +38,15 @@ data class Medication(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MedicalHistoryScreen(navController: NavHostController) {
+fun MedicalHistoryScreen(
+    navController: NavHostController,
+    petId: String? = null
+) {
     // TODO: Use MedicalViewModel to fetch medical history from backend API
     // Example: val viewModel: MedicalViewModel = viewModel(factory = MedicalViewModelFactory(LocalContext.current))
     // val medicalHistory by viewModel.medicalHistory.collectAsState()
     // val medications by viewModel.medications.collectAsState()
+    // Use petId to fetch medical history for specific pet
     val medicalHistory = emptyList<MedicalEvent>() // Replace with dynamic data from backend API
     val medications = emptyList<Medication>() // Replace with dynamic data from backend API
 

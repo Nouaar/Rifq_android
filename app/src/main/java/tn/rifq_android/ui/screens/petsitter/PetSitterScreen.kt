@@ -1,186 +1,165 @@
 package tn.rifq_android.ui.screens.petsitter
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import tn.rifq_android.data.model.sitter.SitterCard
+import tn.rifq_android.data.model.sitter.ServiceType
+import tn.rifq_android.ui.components.LabeledDateField
+import tn.rifq_android.ui.components.RadioRow
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
-
-data class PetSitter(
-    val id: String,
-    val name: String,
-    val rating: String,
-    val reviewCount: String,
-    val distance: String,
-    val price: String,
-    val availability: String,
-    val emoji: String,
-    val avatarBg: Color
-)
+import tn.rifq_android.viewmodel.sitter.SitterListViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PetSitterScreen(navController: NavHostController) {
-    // TODO: Use PetSitterViewModel to fetch sitters from backend API
-    // Example: val viewModel: PetSitterViewModel = viewModel(factory = PetSitterViewModelFactory(LocalContext.current))
-    // val sitters by viewModel.sitters.collectAsState()
-    val sitters = emptyList<PetSitter>() // Replace with dynamic data from backend API
+fun PetSitterScreen(
+    navController: NavHostController,
+    themePreference: tn.rifq_android.data.storage.ThemePreference,
+    viewModel: SitterListViewModel = viewModel()
+) {
+    var fromDate by remember { mutableStateOf(Date()) }
+    var toDate by remember { mutableStateOf(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) }
+    var selectedService by remember { mutableStateOf(ServiceType.AT_HOME) }
+
+    val sitters by viewModel.sitters.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+
+    var isVisible by remember { mutableStateOf(false) }
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 400),
+        label = "contentFade"
+    )
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
 
     Scaffold(
-        topBar = { PetSitterTopBar(navController) },
+        topBar = {
+            TopNavBar(
+                title = "Pet Sitter",
+                showBackButton = true,
+                onBackClick = { navController.popBackStack() },
+                navController = navController
+            )
+        },
         containerColor = PageBackground
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
+                .padding(horizontal = 18.dp)
+                .graphicsLayer { this.alpha = alpha },
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
+
             item {
                 Text(
-                    text = "Find a Pet Sitter",
-                    fontSize = 20.sp,
+                    text = "Find Pet Sitter",
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = TextPrimary,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
 
-            items(sitters) { sitter ->
-                PetSitterCard(sitter, navController)
-            }
-        }
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PetSitterTopBar(navController: NavHostController) {
-    TopAppBar(
-        title = {
-            Text(
-                "Pet Sitters",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 28.sp,
-                color = TextPrimary
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowLeft,
-                    contentDescription = "Back",
-                    tint = TextPrimary
-                )
-            }
-        },
-        actions = {
-            IconButton(onClick = { /* Filter */ }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Filter",
-                    tint = OrangeAccent
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = HeaderBackground
-        )
-    )
-}
-
-@Composable
-private fun PetSitterCard(sitter: PetSitter, navController: NavHostController) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { /* Navigate to sitter details */ },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(sitter.avatarBg),
-                    contentAlignment = Alignment.Center
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = sitter.emoji, fontSize = 32.sp)
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = sitter.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextPrimary
+                    LabeledDateField(
+                        title = "FROM DATE",
+                        date = fromDate,
+                        onDateChange = { fromDate = it }
                     )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(text = "${sitter.rating}★", fontSize = 13.sp, color = TextSecondary)
-                        Text(text = "(${sitter.reviewCount})", fontSize = 13.sp, color = TextSecondary)
-                        Text(text = "•", fontSize = 13.sp, color = TextSecondary)
-                        Text(text = "📍", fontSize = 12.sp)
-                        Text(text = sitter.distance, fontSize = 13.sp, color = RedLocation)
-                    }
+                    LabeledDateField(
+                        title = "TO DATE",
+                        date = toDate,
+                        onDateChange = { toDate = it }
+                    )
+                }
+            }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "SERVICE TYPE",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary
+                    )
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = sitter.price,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = OrangeAccent
+                        RadioRow(
+                            title = "At Home",
+                            price = "€25/day",
+                            isSelected = selectedService == ServiceType.AT_HOME,
+                            onClick = { selectedService = ServiceType.AT_HOME }
                         )
-                        Text(text = "•", fontSize = 13.sp, color = TextSecondary)
-                        Text(
-                            text = sitter.availability,
-                            fontSize = 13.sp,
-                            color = if (sitter.availability == "Available") Color(0xFF4CAF50) else Color(0xFFFF9800)
+                        RadioRow(
+                            title = "Visit Only",
+                            price = "€15",
+                            isSelected = selectedService == ServiceType.VISIT_ONLY,
+                            onClick = { selectedService = ServiceType.VISIT_ONLY }
+                        )
+                        RadioRow(
+                            title = "Walking",
+                            price = "€20",
+                            isSelected = selectedService == ServiceType.WALKING,
+                            onClick = { selectedService = ServiceType.WALKING }
                         )
                     }
                 }
             }
 
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = "View details",
-                tint = TextPrimary,
-                modifier = Modifier.size(24.dp)
-            )
+
+            item {
+                Button(
+                    onClick = { /* TODO: Implement action */ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text("Action")
+                }
+            }
         }
     }
 }

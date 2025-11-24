@@ -13,6 +13,10 @@ data class VerifyEmailRequest(
     val code: String
 )
 
+data class ResendVerificationRequest(
+    val email: String
+)
+
 data class LoginRequest(
     val email: String,
     val password: String

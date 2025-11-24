@@ -1,5 +1,6 @@
 package tn.rifq_android.ui.screens.vet
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -7,7 +8,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,248 +29,276 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import tn.rifq_android.data.model.auth.AppUser
 import tn.rifq_android.ui.theme.*
-import kotlin.collections.get
+import tn.rifq_android.viewmodel.vet.VetProfileViewModel
 
 
 // Data classes
-data class VetService(
-    val label: String,
-    val price: String
-)
 
-data class VetProfileData(
-    val id: String,
-    val name: String,
-    val role: String,
-    val emoji: String,
-    val rating: Double,
-    val reviews: Int,
-    val is24_7: Boolean,
-    val about: String,
-    val services: List<VetService>,
-    val hours: List<String>,
-    val avatarBg: Color
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VetProfileScreen(
     navController: NavHostController,
-    vetId: String? = null
+    vetId: String? = null,
+    viewModel: VetProfileViewModel = viewModel()
 ) {
-    // Mock data repository - In production, fetch from ViewModel/Repository based on vetId
-    val vetsData = mapOf(
-        "1" to VetProfileData(
-            id = "1",
-            name = "Dr. Ahmed Ben Ali",
-            role = "Veterinary Specialist",
-            emoji = "👨‍⚕️",
-            rating = 4.8,
-            reviews = 128,
-            is24_7 = true,
-            about = "Veterinarian with 10+ years of experience in surgery and dermatology. Specialized in treating complex cases.",
-            services = listOf(
-                VetService("Cabinet", "35€"),
-                VetService("Home Visit", "60€"),
-                VetService("Video Call", "25€")
-            ),
-            hours = listOf(
-                "Mon–Sat: 9:00 AM – 6:00 PM",
-                "Sun: 10:00 AM – 4:00 PM",
-                "24/7 Emergency Available"
-            ),
-            avatarBg = Color(0xFFE8C4B4)
-        ),
-        "2" to VetProfileData(
-            id = "2",
-            name = "Dr. Soumaya El Aloui",
-            role = "General & Emergency Veterinarian",
-            emoji = "👩‍⚕️",
-            rating = 4.9,
-            reviews = 247,
-            is24_7 = false,
-            about = "Experienced veterinarian specializing in general care and emergency cases. Passionate about animal welfare.",
-            services = listOf(
-                VetService("Cabinet", "40€"),
-                VetService("Home Visit", "65€"),
-                VetService("Emergency", "80€")
-            ),
-            hours = listOf(
-                "Mon–Fri: 8:00 AM – 7:00 PM",
-                "Sat: 9:00 AM – 5:00 PM",
-                "Sun: Closed"
-            ),
-            avatarBg = Color(0xFFD4A88A)
-        ),
-        "3" to VetProfileData(
-            id = "3",
-            name = "Dr. Karim Miled",
-            role = "Orthopedics Specialist",
-            emoji = "👨‍⚕️",
-            rating = 4.6,
-            reviews = 89,
-            is24_7 = false,
-            about = "Specialized in orthopedics and rehabilitation. Helping pets recover and live their best lives.",
-            services = listOf(
-                VetService("Cabinet", "45€"),
-                VetService("Home Visit", "70€"),
-                VetService("Rehabilitation", "55€")
-            ),
-            hours = listOf(
-                "Mon–Fri: 10:00 AM – 6:00 PM",
-                "Sat: 10:00 AM – 2:00 PM",
-                "Sun: Closed"
-            ),
-            avatarBg = Color(0xFFA8D55F)
-        )
-    )
-
-    // Get vet data or use default
-    val vet = vetsData[vetId] ?: vetsData["1"]!!
+    val vet by viewModel.vet.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    
+    // Load vet data when screen opens
+    LaunchedEffect(vetId) {
+        vetId?.let { viewModel.loadVet(it) }
+    }
 
     Scaffold(
-        topBar = { VetProfileTopBar(navController, vet.name) },
+        topBar = { VetProfileTopBar(navController, vet?.name ?: "Vet Profile") },
         containerColor = PageBackground
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(top = 6.dp, bottom = 40.dp)
         ) {
-            // Header Section
-            item {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(vertical = 8.dp)
-                ) {
-                    // Avatar
+            when {
+                // Loading state
+                isLoading -> {
                     Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(vet.avatarBg.copy(alpha = 0.25f)),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
+                        CircularProgressIndicator(color = VetCanyon)
+                    }
+                }
+                
+                // Error state
+                error != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFDC2626),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = vet.emoji,
-                            fontSize = 40.sp
+                            text = "Error loading profile",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = error!!,
+                            fontSize = 14.sp,
+                            color = TextSecondary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { vetId?.let { viewModel.retry(it) } },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = VetCanyon
+                            )
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
+                
+                // Success state
+                vet != null -> {
+                    VetProfileContent(
+                        navController = navController,
+                        vet = vet!!
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VetProfileContent(
+    navController: NavHostController,
+    vet: AppUser
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 6.dp, bottom = 40.dp)
+    ) {
+        // Header Section
+        item {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                // Avatar
+                Box(
+                    modifier = Modifier
+                        .size(90.dp)
+                        .clip(CircleShape)
+                        .background(VetCanyon.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🧑‍⚕️",
+                        fontSize = 40.sp
+                    )
+                }
+
+                // Name
+                Text(
+                    text = vet.vetClinicName ?: vet.name ?: "Veterinarian",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+
+                // Role
+                Text(
+                    text = vet.vetSpecializations?.joinToString(" · ") ?: "Veterinary Specialist",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextSecondary
+                )
+
+                // Badges Row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    // Rating Badge
+                    BadgeChip(
+                        icon = "⭐",
+                        text = "4.8",
+                        backgroundColor = CardBackground,
+                        textColor = TextPrimary,
+                        borderColor = GreyBorder
+                    )
+
+                    // Years of experience
+                    vet.vetYearsOfExperience?.let { years ->
+                        BadgeChip(
+                            icon = "📅",
+                            text = "$years years",
+                            backgroundColor = CardBackground,
+                            textColor = TextPrimary,
+                            borderColor = GreyBorder
                         )
                     }
 
-                    // Name
-                    Text(
-                        text = vet.name,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-
-                    // Role
-                    Text(
-                        text = vet.role,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
-                    )
-
-                    // Badges Row
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        // Rating Badge
+                    // 24/7 Badge
+                    if (vet.vetEmergencyAvailable == true) {
                         BadgeChip(
-                            icon = "⭐",
-                            text = String.format("%.1f", vet.rating),
-                            backgroundColor = CardBackground,
-                            textColor = TextPrimary,
-                            borderColor = GreyBorder
+                            icon = "⚡",
+                            text = "24/7",
+                            backgroundColor = OrangeAccent.copy(alpha = 0.18f),
+                            textColor = OrangeAccent,
+                            borderColor = OrangeAccent
                         )
+                    }
+                }
+            }
+        }
 
-                        // Reviews Badge
-                        BadgeChip(
-                            icon = "📝",
-                            text = "${vet.reviews} reviews",
-                            backgroundColor = CardBackground,
-                            textColor = TextPrimary,
-                            borderColor = GreyBorder
-                        )
+        // About Section
+        item {
+            SectionCard(title = "About") {
+                Text(
+                    text = vet.vetBio ?: "Experienced veterinarian providing quality care for your pets.",
+                    fontSize = 14.sp,
+                    color = TextPrimary,
+                    lineHeight = 20.sp
+                )
+            }
+        }
 
-                        // 24/7 Badge
-                        if (vet.is24_7) {
-                            BadgeChip(
-                                icon = "⚡",
-                                text = "24/7",
-                                backgroundColor = OrangeAccent.copy(alpha = 0.18f),
-                                textColor = OrangeAccent,
-                                borderColor = OrangeAccent
+        // Services & Pricing Section
+        item {
+            SectionCard(title = "Services & Pricing") {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val services = listOf(
+                        VetService("Cabinet", "35€"),
+                        VetService("Home Visit", "60€"),
+                        VetService("Video Call", "25€")
+                    )
+                    
+                    services.forEachIndexed { index, service ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = service.label,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = service.price,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = OrangeAccent
                             )
                         }
-                    }
-                }
-            }
 
-            // About Section
-            item {
-                SectionCard(title = "About") {
-                    Text(
-                        text = vet.about,
-                        fontSize = 14.sp,
-                        color = TextPrimary,
-                        lineHeight = 20.sp
-                    )
-                }
-            }
-
-            // Services & Pricing Section
-            item {
-                SectionCard(title = "Services & Pricing") {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        vet.services.forEachIndexed { index, service ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = service.label,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
-                                )
-                                Text(
-                                    text = service.price,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = OrangeAccent
-                                )
-                            }
-
-                            if (index < vet.services.size - 1) {
-                                Divider(color = GreyBorder)
-                            }
+                        if (index < services.size - 1) {
+                            HorizontalDivider(color = GreyBorder)
                         }
                     }
                 }
             }
+        }
 
-            // Hours Section
-            item {
-                SectionCard(title = "Hours") {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        vet.hours.forEach { hour ->
+        // Working Hours Section
+        item {
+            SectionCard(title = "Working Hours") {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val hours = if (vet.vetEmergencyAvailable == true) {
+                        listOf(
+                            "Mon–Sat: 9:00 AM – 6:00 PM",
+                            "Sun: 10:00 AM – 4:00 PM",
+                            "24/7 Emergency Available"
+                        )
+                    } else {
+                        listOf(
+                            "Mon–Fri: 9:00 AM – 6:00 PM",
+                            "Sat: 10:00 AM – 2:00 PM",
+                            "Sun: Closed"
+                        )
+                    }
+                    
+                    hours.forEach { hour ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = VetCanyon,
+                                modifier = Modifier.size(16.dp)
+                            )
                             Text(
                                 text = hour,
                                 fontSize = 13.sp,
@@ -269,31 +308,114 @@ fun VetProfileScreen(
                     }
                 }
             }
+        }
 
-            // Book Appointment Button
+        // Location Section
+        vet.vetAddress?.let { address ->
             item {
+                SectionCard(title = "Location") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = VetCanyon,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = address,
+                            fontSize = 14.sp,
+                            color = TextPrimary
+                        )
+                    }
+                }
+            }
+        }
+
+        // License info
+        vet.vetLicenseNumber?.let { license ->
+            item {
+                SectionCard(title = "License") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = VetCanyon,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "License: $license",
+                            fontSize = 14.sp,
+                            color = TextPrimary
+                        )
+                    }
+                }
+            }
+        }
+
+        // Contact Button
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Button(
-                    onClick = { /* Handle booking */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .padding(top = 8.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = OrangeAccent
-                    )
+                    onClick = {
+                        // Navigate to booking create screen
+                        navController.navigate("booking_create/${vet.id}/${vet.name}/vet")
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = VetCanyon),
+                    contentPadding = PaddingValues(vertical = 14.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "BOOK APPOINTMENT",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        text = "Book Appointment",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Button(
+                    onClick = { navController.navigate("chat/${vet.id}/${vet.name ?: "Vet"}") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(),
+                    border = BorderStroke(1.dp, VetCanyon),
+                    contentPadding = PaddingValues(vertical = 14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null,
+                        tint = VetCanyon,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Message",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = VetCanyon
                     )
                 }
             }
         }
     }
 }
+
+// Data class for services
+data class VetService(val label: String, val price: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -310,7 +432,7 @@ private fun VetProfileTopBar(navController: NavHostController, vetName: String) 
         navigationIcon = {
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = TextPrimary
                 )

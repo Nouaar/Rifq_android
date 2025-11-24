@@ -10,6 +10,7 @@ import tn.rifq_android.data.model.auth.ResetPasswordRequest
 import tn.rifq_android.data.model.auth.ChangePasswordRequest
 import tn.rifq_android.data.model.auth.ChangeEmailRequest
 import tn.rifq_android.data.model.auth.VerifyNewEmailRequest
+import tn.rifq_android.data.model.auth.ResendVerificationRequest
 import tn.rifq_android.data.model.auth.MessageResponse
 import retrofit2.Response
 import retrofit2.http.Body
@@ -47,6 +48,10 @@ interface AuthApi {
 
     @POST("auth/verify-new-email")
     suspend fun verifyNewEmail(@Body request: VerifyNewEmailRequest): Response<MessageResponse>
+
+    // Resend verification code
+    @POST("auth/verify/resend")
+    suspend fun resendVerificationCode(@Body request: ResendVerificationRequest): Response<MessageResponse>
 
     // Google Sign-In
     @POST("auth/google")

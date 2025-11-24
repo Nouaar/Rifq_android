@@ -217,7 +217,7 @@ private fun PetDetailContent(navController: NavHostController, pet: Pet) {
 
             item {
                 OutlinedButton(
-                    onClick = { navController.navigate("medical_history") },
+                    onClick = { navController.navigate("medical_history/${pet.id}") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

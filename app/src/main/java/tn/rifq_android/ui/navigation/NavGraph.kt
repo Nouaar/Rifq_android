@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import tn.rifq_android.data.storage.ThemePreference
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.ui.components.SplashScreen
 import tn.rifq_android.ui.screens.auth.LoginScreen
@@ -38,7 +39,13 @@ object Routes {
 }
 
 @Composable
-fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
+fun AppNavGraph(
+    context: Context,
+    themePreference: ThemePreference,
+    notificationNavData: tn.rifq_android.NotificationNavData? = null,
+    onNotificationHandled: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val navController = rememberNavController()
     val factory = AuthViewModelFactory(context)
     val authViewModel: AuthViewModel = viewModel(factory = factory)
@@ -187,6 +194,9 @@ fun AppNavGraph(context: Context, modifier: Modifier = Modifier) {
 
         composable(Routes.MAIN) {
             MainScreen(
+                themePreference = themePreference,
+                notificationNavData = notificationNavData,
+                onNotificationHandled = onNotificationHandled,
                 onNavigateToChangePassword = {
                     navController.navigate(Routes.CHANGE_PASSWORD)
                 },
