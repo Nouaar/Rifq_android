@@ -54,15 +54,17 @@ interface ChatApi {
     )
     
     /**
-     * Upload audio message
-     * @param conversationId Conversation ID
-     * @param audio Audio file as multipart
-     * @return Message with audioURL
+     * Send message with audio file
+     * Backend: POST /messages with multipart/form-data
+     * Field name for audio: "audio"
+     * Also accepts CreateMessageDto fields: recipientId, content, conversationId
      */
     @Multipart
-    @POST("chat/audio")
-    suspend fun uploadAudio(
-        @Part("conversationId") conversationId: String,
+    @POST("messages")
+    suspend fun sendAudioMessage(
+        @Part recipientId: MultipartBody.Part,
+        @Part content: MultipartBody.Part,
+        @Part conversationId: MultipartBody.Part?,
         @Part audio: MultipartBody.Part
     ): Message
     

@@ -234,8 +234,16 @@ fun ChatViewScreenEnhanced(
                 showRecordingDialog = false
                 recordingDuration = 0
                 
-                // TODO: Upload audio file and send message
-                // viewModel.uploadAudioMessage(conversationId!!, audioFile)
+                // Upload audio file and send message
+                if (audioFile != null && conversationId != null) {
+                    coroutineScope.launch {
+                        viewModel.uploadAudioMessage(
+                            recipientId = recipientId,
+                            conversationId = conversationId,
+                            audioFile = audioFile
+                        )
+                    }
+                }
             },
             onCancel = {
                 if (isRecording) {

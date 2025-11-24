@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.get
 import tn.rifq_android.data.api.RetrofitInstance
 import tn.rifq_android.data.model.chat.*
 import tn.rifq_android.util.MessageRefreshManager
@@ -248,6 +250,71 @@ class ChatViewModel : ViewModel() {
         } catch (e: Exception) {
             _error.value = e.message ?: "Failed to delete message"
             false
+        }
+    }
+    
+    /**
+     * Upload and send audio message
+     * Backend: POST /messages with multipart/form-data
+     * iOS Reference: ChatView.swift audio message handling
+     */
+    suspend fun uploadAudioMessage(
+        recipientId: String,
+        conversationId: String?,
+        audioFile: java.io.File
+    ): Message? {
+        return try {
+            _isLoading.value = true
+            _error.value = null
+            
+            // Create multipart body parts
+            val recipientIdPart = okhttp3.MultipartBody.Part.createFormData(
+                "recipientId",
+                recipientId
+            )
+            val contentPart = okhttp3.MultipartBody.Part.createFormData(
+                "content",
+                "🎤 Audio message" // Placeholder text
+            )
+            val conversationIdPart = conversationId?.let {
+                okhttp3.MultipartBody.Part.createFormData("conversationId", it)
+            }
+            val audioPart = okhttp3.MultipartBody.Part.createFormData(
+                "audio",
+                audioFile.name,
+                okhttp3.RequestBody.create(
+                    "audio/m4a".toMediaTypeOrNull() ?: "audio/*".toMediaTypeOrNull()!!,
+                    audioFile
+                )
+            )
+            
+            // Send audio message
+            val newMessage = chatApi.sendAudioMessage(
+                recipientId = recipientIdPart,
+                content = contentPart,
+                conversationId = conversationIdPart,
+                audio = audioPart
+            )
+            
+            // Add message to local list immediately
+            _messages.value = _messages.value + newMessage
+            
+            // Update current conversation ID if we didn't have one
+            if (currentConversationId == null && newMessage.normalizedConversationId.isNotEmpty()) {
+                currentConversationId = newMessage.normalizedConversationId
+            }
+            
+            // Backend automatically sends FCM notification to recipient
+            // Refresh conversations to update last message
+            loadConversations()
+            
+            _isLoading.value = false
+            newMessage
+        } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "Error uploading audio message: ${e.message}", e)
+            _error.value = e.message ?: "Failed to upload audio message"
+            _isLoading.value = false
+            null
         }
     }
     

@@ -17,6 +17,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import kotlinx.coroutines.flow.firstOrNull
 import tn.rifq_android.data.storage.ThemePreference
 import tn.rifq_android.ui.components.BottomNavBar
@@ -217,9 +219,24 @@ fun MainScreen(
         currentRoute in listOf("home", "discover", "chat_ai", "mypets", "profile")
     }
     
+    // Tab bar animation is implemented above
+    // Tab content transitions are handled by NavHost (fade by default)
+    // iOS Reference: MainTabView.swift lines 34-35, 51-52
+    
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            // Tab bar show/hide animation (iOS Reference: MainTabView.swift lines 51-52)
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(200)
+                ) + fadeIn(animationSpec = tween(200)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(200)
+                ) + fadeOut(animationSpec = tween(200))
+            ) {
                 BottomNavBar(navController = navController)
             }
         }
