@@ -47,15 +47,15 @@ class PetAIViewModel(
      */
     fun generateTips(petId: String) {
         viewModelScope.launch {
+            // Check cache first (outside try block for error handling)
+            val cached = tipsCache[petId]
+            if (cached != null && System.currentTimeMillis() - cached.second < cacheTTL) {
+                Log.d("PetAIViewModel", "Using cached tips for pet $petId")
+                updatePetTips(petId, cached.first)
+                // Still try to refresh in background
+            }
+            
             try {
-                // Check cache first
-                val cached = tipsCache[petId]
-                if (cached != null && System.currentTimeMillis() - cached.second < cacheTTL) {
-                    Log.d("PetAIViewModel", "Using cached tips for pet $petId")
-                    updatePetTips(petId, cached.first)
-                    return@launch
-                }
-
                 _isLoading.value = true
                 _error.value = null
 
@@ -75,10 +75,16 @@ class PetAIViewModel(
                 updatePetTips(petId, tips)
 
                 Log.d("PetAIViewModel", "Generated ${tips.size} tips for pet $petId")
-                
+                    
             } catch (e: Exception) {
                 Log.e("PetAIViewModel", "Error generating tips for pet $petId", e)
-                _error.value = "Failed to generate tips: ${e.message}"
+                // Show cached content even if new generation fails (iOS Reference: HomeView.swift lines 546-550)
+                if (cached != null) {
+                    Log.d("PetAIViewModel", "Using cached tips due to error")
+                    updatePetTips(petId, cached.first)
+                } else {
+                    _error.value = "Failed to generate tips: ${e.message}"
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -124,15 +130,21 @@ class PetAIViewModel(
                 
             } catch (e: Exception) {
                 Log.e("PetAIViewModel", "Error generating status for pet $petId", e)
-                _error.value = "Failed to generate status: ${e.message}"
-                
-                // Fallback to default status
-                val fallback = PetStatus(
-                    status = "Healthy",
-                    summary = "All good",
-                    pills = emptyList()
-                )
-                updatePetStatus(petId, fallback)
+                // Use cached content if available (iOS Reference: HomeView.swift lines 546-550)
+                val cached = statusCache[petId]
+                if (cached != null) {
+                    Log.d("PetAIViewModel", "Using cached status due to error")
+                    updatePetStatus(petId, cached.first)
+                } else {
+                    _error.value = "Failed to generate status: ${e.message}"
+                    // Fallback to default status
+                    val fallback = PetStatus(
+                        status = "Healthy",
+                        summary = "All good",
+                        pills = emptyList()
+                    )
+                    updatePetStatus(petId, fallback)
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -211,11 +223,30 @@ class PetAIViewModel(
     }
 
     /**
-     * Generate content for multiple pets
+     * Generate content for multiple pets with progressive loading (per-pet)
+     * iOS Reference: HomeView.swift lines 437-503
+     * Updates UI immediately after each pet's content is generated
      */
     fun generateContentForPets(petIds: List<String>, silent: Boolean = true) {
-        petIds.forEach { petId ->
-            generateAllContent(petId, silent)
+        viewModelScope.launch {
+            // Process each pet one by one for progressive loading
+            petIds.forEachIndexed { index, petId ->
+                try {
+                    // Generate tips first (updates UI immediately)
+                    generateTips(petId)
+                    
+                    // Generate status (updates UI immediately)
+                    generateStatus(petId)
+                    
+                    // Generate reminders (updates UI immediately)
+                    generateReminders(petId)
+                    
+                    Log.d("PetAIViewModel", "✅ Processed pet ${index + 1}/${petIds.size}: $petId")
+                } catch (e: Exception) {
+                    Log.e("PetAIViewModel", "⚠️ Failed to process pet $petId", e)
+                    // Continue with next pet even if this one fails
+                }
+            }
         }
     }
 

@@ -15,6 +15,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import kotlinx.coroutines.flow.firstOrNull
 import tn.rifq_android.data.storage.ThemePreference
@@ -39,6 +40,10 @@ import tn.rifq_android.ui.screens.pet.EditPetScreen
 import tn.rifq_android.viewmodel.auth.AuthViewModel
 import tn.rifq_android.viewmodel.auth.AuthViewModelFactory
 import tn.rifq_android.viewmodel.booking.BookingViewModelFactory
+import tn.rifq_android.viewmodel.profile.ProfileViewModel
+import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
+import tn.rifq_android.viewmodel.profile.ProfileUiState
+import tn.rifq_android.util.ProfileCompletionUtil
 
 @Composable
 fun MainScreen(
@@ -56,6 +61,63 @@ fun MainScreen(
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(context)
     )
+    
+    // Profile ViewModel for completion check
+    val profileViewModel: ProfileViewModel = viewModel(
+        factory = ProfileViewModelFactory(context)
+    )
+    val profileUiState by profileViewModel.uiState.collectAsState()
+    
+    // Profile completion state
+    var showProfileCompletionAlert by remember { mutableStateOf(false) }
+    var shouldPresentEditProfile by remember { mutableStateOf(false) }
+    
+    // Check profile completion
+    LaunchedEffect(profileUiState) {
+        if (profileUiState is ProfileUiState.Success) {
+            val user = (profileUiState as ProfileUiState.Success).user
+            if (ProfileCompletionUtil.requiresProfileCompletion(user)) {
+                showProfileCompletionAlert = true
+            }
+        }
+    }
+    
+    // Handle profile completion alert
+    if (showProfileCompletionAlert && profileUiState is ProfileUiState.Success) {
+        val user = (profileUiState as ProfileUiState.Success).user
+        AlertDialog(
+            onDismissRequest = { showProfileCompletionAlert = false },
+            title = { Text("Complete your profile to start") },
+            text = { Text(ProfileCompletionUtil.getMissingFieldsMessage(user)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showProfileCompletionAlert = false
+                        shouldPresentEditProfile = true
+                        navController.navigate("profile")
+                    }
+                ) {
+                    Text("Complete Now")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showProfileCompletionAlert = false }
+                ) {
+                    Text("Later")
+                }
+            }
+        )
+    }
+    
+    // Auto-navigate to edit profile if needed
+    LaunchedEffect(shouldPresentEditProfile) {
+        if (shouldPresentEditProfile) {
+            kotlinx.coroutines.delay(100)
+            navController.navigate("edit_profile")
+            shouldPresentEditProfile = false
+        }
+    }
     
     // Initialize SubscriptionManager (iOS Reference: MainTabView.swift line 11)
     LaunchedEffect(Unit) {
@@ -149,9 +211,17 @@ fun MainScreen(
         )
     }
 
+    // Tab bar visibility - hide on detail screens (iOS Reference: MainTabView.swift line 36)
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val showBottomBar = remember(currentRoute) {
+        currentRoute in listOf("home", "discover", "chat_ai", "mypets", "profile")
+    }
+    
     Scaffold(
         bottomBar = {
-            BottomNavBar(navController = navController)
+            if (showBottomBar) {
+                BottomNavBar(navController = navController)
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -195,7 +265,7 @@ fun MainScreen(
                 ProfileScreen(
                     onNavigateToChangePassword = onNavigateToChangePassword,
                     onNavigateToChangeEmail = onNavigateToChangeEmail,
-                    onNavigateToJoin = { navController.navigate("join") },
+                    onNavigateToJoin = { navController.navigate("join_team") },
                     onNavigateToSubscription = { navController.navigate("subscription_management") },
                     onLogout = onLogout
                 )
@@ -203,7 +273,13 @@ fun MainScreen(
 
             // Additional screens
             composable("join") {
-                JoinScreen(
+                tn.rifq_android.ui.screens.join.JoinTeamScreen(
+                    navController = navController
+                )
+            }
+            
+            composable("join_team") {
+                tn.rifq_android.ui.screens.join.JoinTeamScreen(
                     navController = navController
                 )
             }

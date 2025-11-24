@@ -10,6 +10,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,7 +55,15 @@ fun ProfileScreen(
     // Dialog states
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSettingsSheet by remember { mutableStateOf(false) }
+    var showLogoutConfirmation by remember { mutableStateOf(false) }
 
+    // Tab refresh notification (iOS Reference: MainTabView.swift lines 37-45)
+    // Refresh when switching to Profile tab
+    LaunchedEffect(Unit) {
+        viewModel.loadProfile()
+    }
+    
     LaunchedEffect(uiState) {
         if (uiState is ProfileUiState.UserDeleted) {
             onLogout()
@@ -87,7 +99,9 @@ fun ProfileScreen(
         topBar = {
             TopNavBar(
                 title = "Profile",
-                showBackButton = false
+                showBackButton = false,
+                onSettingsClick = { showSettingsSheet = true },
+                onMessagesClick = { /* Navigate to conversations */ }
             )
         },
         containerColor = PageBackground
@@ -295,9 +309,9 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Join Us Button
+                    // Join Us Button - Navigate to JoinTeamScreen (iOS Reference: JoinTeamView.swift)
                     Button(
-                        onClick = onNavigateToJoin,
+                        onClick = { onNavigateToJoin() },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -399,6 +413,80 @@ fun ProfileScreen(
                     viewModel.deleteAccount()
                 },
                 onDismiss = { showDeleteDialog = false }
+            )
+        }
+        
+        // Settings Sheet (iOS Reference: ProfileView.swift settings sheet)
+        if (showSettingsSheet && uiState is ProfileUiState.Success) {
+            ModalBottomSheet(
+                onDismissRequest = { showSettingsSheet = false },
+                containerColor = CardBackground,
+                dragHandle = {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .width(42.dp)
+                            .padding(vertical = 12.dp),
+                        color = VetStroke.copy(alpha = 0.4f),
+                        thickness = 4.dp
+                    )
+                }
+            ) {
+                SettingsSheetContent(
+                    user = (uiState as ProfileUiState.Success).user,
+                    themePreference = themePreference,
+                    onDismiss = { showSettingsSheet = false },
+                    onNavigateToChangePassword = {
+                        showSettingsSheet = false
+                        onNavigateToChangePassword()
+                    },
+                    onNavigateToChangeEmail = {
+                        showSettingsSheet = false
+                        onNavigateToChangeEmail()
+                    },
+                    onNavigateToSubscription = {
+                        showSettingsSheet = false
+                        onNavigateToSubscription()
+                    },
+                    onNavigateToHelp = {
+                        showSettingsSheet = false
+                        // Navigate to help screen
+                    },
+                    onLogout = {
+                        showSettingsSheet = false
+                        showLogoutConfirmation = true
+                    }
+                )
+            }
+        }
+        
+        // Logout Confirmation Dialog
+        if (showLogoutConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showLogoutConfirmation = false },
+                title = { Text("Are you sure you want to logout?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutConfirmation = false
+                            coroutineScope.launch {
+                                val tokenManager = TokenManager(context)
+                                val userManager = UserManager(context)
+                                tokenManager.clearTokens()
+                                userManager.clearUserId()
+                                onLogout()
+                            }
+                        }
+                    ) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showLogoutConfirmation = false }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }
@@ -548,3 +636,213 @@ fun ThemeToggleCard(isDarkMode: Boolean, onToggle: (Boolean) -> Unit) {
 
 
 
+
+/**
+ * Settings Sheet Content matching iOS ProfileView settings
+ * iOS Reference: ProfileView.swift lines 349-443
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsSheetContent(
+    user: tn.rifq_android.data.model.auth.User,
+    themePreference: ThemePreference,
+    onDismiss: () -> Unit,
+    onNavigateToChangePassword: () -> Unit,
+    onNavigateToChangeEmail: () -> Unit,
+    onNavigateToSubscription: () -> Unit,
+    onNavigateToHelp: () -> Unit,
+    onLogout: () -> Unit
+) {
+    val isDarkMode by themePreference.isDarkMode.collectAsState(initial = false)
+    val coroutineScope = rememberCoroutineScope()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Settings",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        
+        // Theme Toggle
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            border = BorderStroke(1.dp, VetStroke.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🎨", fontSize = 16.sp)
+                    Text(
+                        text = "Appearance",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                }
+                
+                // Theme Picker
+                var showThemePicker by remember { mutableStateOf(false) }
+                Box {
+                    TextButton(onClick = { showThemePicker = true }) {
+                        Text(
+                            text = when {
+                                isDarkMode -> "Dark"
+                                else -> "Light"
+                            },
+                            color = VetCanyon
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showThemePicker,
+                        onDismissRequest = { showThemePicker = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("System") },
+                            onClick = {
+                                // TODO: Implement system theme
+                                showThemePicker = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Light") },
+                            onClick = {
+                                coroutineScope.launch {
+                                    themePreference.setDarkMode(false)
+                                }
+                                showThemePicker = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Dark") },
+                            onClick = {
+                                coroutineScope.launch {
+                                    themePreference.setDarkMode(true)
+                                }
+                                showThemePicker = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Settings Options
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SettingsRow(
+                icon = "🔑",
+                label = "Change Password",
+                onClick = {
+                    if (user.provider != "google") {
+                        onNavigateToChangePassword()
+                    }
+                },
+                enabled = user.provider != "google"
+            )
+            
+            SettingsRow(
+                icon = "✉️",
+                label = "Change Email",
+                onClick = {
+                    if (user.provider != "google") {
+                        onNavigateToChangeEmail()
+                    }
+                },
+                enabled = user.provider != "google"
+            )
+            
+            SettingsRow(
+                icon = "💳",
+                label = "Subscription",
+                onClick = onNavigateToSubscription
+            )
+            
+            SettingsRow(
+                icon = "❓",
+                label = "Help",
+                onClick = onNavigateToHelp
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Logout Button
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(2.dp, VetCanyon),
+            contentPadding = PaddingValues(vertical = 14.dp)
+        ) {
+            Text(
+                text = "LOG OUT",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = VetCanyon,
+                letterSpacing = 0.5.sp
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    icon: String,
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CardBackground
+        ),
+        border = BorderStroke(1.dp, VetStroke.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(icon, fontSize = 16.sp)
+            Text(
+                text = label,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (enabled) TextPrimary else TextSecondary.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = if (enabled) TextSecondary else TextSecondary.copy(alpha = 0.3f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}

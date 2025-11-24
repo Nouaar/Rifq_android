@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,8 +39,16 @@ fun MyPetsScreen(
     )
     val uiState by viewModel.uiState.collectAsState()
 
+    // Tab refresh notification (iOS Reference: MainTabView.swift lines 37-45)
+    // Refresh when switching to MyPets tab
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
+    }
+    
+    // Also refresh when screen becomes visible (tab switch)
+    DisposableEffect(Unit) {
+        viewModel.loadProfile()
+        onDispose { }
     }
 
     when (val state = uiState) {

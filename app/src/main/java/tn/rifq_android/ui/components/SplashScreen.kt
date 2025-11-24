@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,11 +13,13 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import tn.rifq_android.ui.theme.VetCanyon
+import tn.rifq_android.R
 import java.util.*
 
 /**
@@ -169,8 +169,8 @@ private fun Paw(
         label = "pawWave"
     )
 
-    Icon(
-        imageVector = Icons.Default.Favorite,
+    androidx.compose.material3.Icon(
+        painter = painterResource(id = R.drawable.ic_paw),
         contentDescription = null,
         modifier = Modifier
             .size(58.dp)

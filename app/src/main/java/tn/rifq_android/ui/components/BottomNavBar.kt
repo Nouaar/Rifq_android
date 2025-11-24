@@ -178,13 +178,13 @@ private fun StandardTabButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1.0f,
+    val circleSize by animateDpAsState(
+        targetValue = if (isSelected) 34.dp else 30.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
         ),
-        label = "tabScale"
+        label = "tabIconSize"
     )
 
     Box(
@@ -197,19 +197,21 @@ private fun StandardTabButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 10.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(circleSize)
                     .clip(CircleShape)
-                    .background(if (isSelected) VetCanyon else CardBackground)
+                    .background(
+                        if (isSelected) VetCanyon else CardBackground
+                    )
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) VetCanyon else VetStroke.copy(alpha = 0.6f),
+                        color = if (isSelected) Color.Transparent else VetStroke.copy(alpha = 0.6f),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -217,22 +219,14 @@ private fun StandardTabButton(
                 Icon(
                     imageVector = tab.icon,
                     contentDescription = tab.title,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(16.dp),
                     tint = if (isSelected) Color.White else TextSecondary
                 )
             }
 
-            Icon(
-                imageVector = tab.icon,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(0.dp)
-                    .scale(scale)
-            )
-
             Text(
                 text = tab.title,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = if (isSelected) VetCanyon else TextSecondary,
                 maxLines = 1

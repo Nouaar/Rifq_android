@@ -22,8 +22,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import tn.rifq_android.ui.components.TopNavBar
+import tn.rifq_android.ui.components.EmbeddedMapView
 import tn.rifq_android.ui.theme.*
 
 
@@ -60,10 +62,8 @@ fun DiscoverScreen(
             when (selectedMode) {
                 DiscoverMode.FIND_CARE -> FindCareView(navController = navController)
                 DiscoverMode.MAP -> {
-
-                    LaunchedEffect(Unit) {
-                        navController.navigate("map")
-                    }
+                    // Embedded map view (iOS Reference: DiscoverView.swift lines 270-344)
+                    EmbeddedMapView(navController = navController)
                 }
             }
         }

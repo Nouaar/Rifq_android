@@ -62,9 +62,22 @@ fun HomeScreen(
             LoadingScreen()
         }
         is ProfileUiState.Success -> {
-            // Load AI content for all pets
+            // Calendar Manager for AI integration (iOS Reference: HomeView.swift lines 415-435)
+            val calendarManager = remember { tn.rifq_android.util.CalendarManager(context) }
+            
+            // Load AI content for all pets with calendar events
             LaunchedEffect(state.pets) {
                 if (state.pets.isNotEmpty()) {
+                    // Request calendar permission if needed
+                    if (calendarManager.hasCalendarPermission()) {
+                        // Load calendar events for each pet before generating AI content
+                        state.pets.forEach { pet ->
+                            pet.id?.let { petId ->
+                                calendarManager.loadEventsForPet(petId)
+                            }
+                        }
+                    }
+                    
                     val petIds = state.pets.mapNotNull { it.id }
                     if (petIds.isNotEmpty()) {
                         aiViewModel.generateContentForPets(petIds, silent = true)
@@ -172,6 +185,28 @@ private fun HomeScreenContent(
     val petStatuses by aiViewModel.petStatuses.collectAsState()
     val petReminders by aiViewModel.petReminders.collectAsState()
     val isAILoading by aiViewModel.isLoading.collectAsState()
+    
+    // Auto-refresh timer for AI content (1 hour) - iOS Reference: HomeView.swift lines 365-395
+    LaunchedEffect(pets) {
+        if (pets.isNotEmpty()) {
+            val petIds = pets.mapNotNull { it.id }
+            if (petIds.isNotEmpty()) {
+                // Initial load
+                aiViewModel.generateContentForPets(petIds, silent = true)
+                
+                // Auto-refresh every 1 hour
+                while (true) {
+                    kotlinx.coroutines.delay(60 * 60 * 1000L) // 1 hour
+                    if (pets.isNotEmpty()) {
+                        val currentPetIds = pets.mapNotNull { it.id }
+                        if (currentPetIds.isNotEmpty()) {
+                            aiViewModel.generateContentForPets(currentPetIds, silent = true)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = { 
@@ -210,7 +245,8 @@ private fun HomeScreenContent(
                 PetHealthSnapshotSection(
                     pets = pets,
                     navController = navController,
-                    petStatuses = petStatuses
+                    petStatuses = petStatuses,
+                    aiViewModel = aiViewModel
                 )
             }
 
@@ -293,7 +329,17 @@ private fun DailyTipsSection(
                         .height(150.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = VetCanyon, modifier = Modifier.size(32.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(color = VetCanyon, modifier = Modifier.size(32.dp))
+                        Text(
+                            text = "Generating AI tips...",
+                            fontSize = 13.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
             allTips.isNotEmpty() -> {
@@ -304,6 +350,28 @@ private fun DailyTipsSection(
                     items(allTips.size) { index ->
                         DailyTipCard(tip = allTips[index])
                     }
+                }
+            }
+            pets.isEmpty() -> {
+                // No pets - show empty state (iOS Reference: HomeView.swift lines 234-246)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "No tips or recommendations",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "Add a pet to get personalized tips",
+                        fontSize = 12.sp,
+                        color = TextSecondary.copy(alpha = 0.7f)
+                    )
                 }
             }
             else -> {
@@ -324,8 +392,10 @@ private fun DailyTipsSection(
 private fun PetHealthSnapshotSection(
     pets: List<tn.rifq_android.data.model.pet.Pet>,
     navController: NavHostController,
-    petStatuses: Map<String, tn.rifq_android.data.model.ai.PetStatus>
+    petStatuses: Map<String, tn.rifq_android.data.model.ai.PetStatus>,
+    aiViewModel: tn.rifq_android.viewmodel.ai.PetAIViewModel
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Column(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -356,6 +426,41 @@ private fun PetHealthSnapshotSection(
                         pet = pet,
                         status = petStatuses[pet.id],
                         onClick = { navController.navigate("pet_detail/${pet.id}") }
+                    )
+                }
+                
+                // Refresh AI Status button (iOS Reference: HomeView.swift lines 288-308)
+                Button(
+                    onClick = {
+                    // Refresh AI content for all pets with haptic feedback
+                    tn.rifq_android.util.HapticFeedbackUtil.hapticTap(context)
+                    val petIds = pets.mapNotNull { it.id }
+                    if (petIds.isNotEmpty()) {
+                        aiViewModel.generateContentForPets(petIds, silent = false)
+                    }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = VetCanyon.copy(alpha = 0.1f),
+                        contentColor = VetCanyon
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = VetCanyon
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Refresh AI Status",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = VetCanyon
                     )
                 }
             }
@@ -390,7 +495,17 @@ private fun UpcomingRemindersSection(
                         .height(100.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = VetCanyon, modifier = Modifier.size(32.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(color = VetCanyon, modifier = Modifier.size(32.dp))
+                        Text(
+                            text = "Generating reminders...",
+                            fontSize = 13.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
             allReminders.isNotEmpty() -> {
@@ -402,14 +517,38 @@ private fun UpcomingRemindersSection(
                     }
                 }
             }
+            pets.isEmpty() -> {
+                // No pets - show empty state
+                Text(
+                    text = "No reminders",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
             else -> {
-                // Show mock reminders as fallback
+                // No reminders generated - show empty state (iOS Reference: HomeView.swift lines 346-357)
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    remindersMock.forEach { reminder ->
-                        ReminderRow(reminder = reminder)
-                    }
+                    Text(
+                        text = "No reminders coming soon",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "All scheduled care is up to date",
+                        fontSize = 12.sp,
+                        color = TextSecondary.copy(alpha = 0.7f)
+                    )
                 }
             }
         }

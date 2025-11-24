@@ -277,6 +277,31 @@ class CalendarManager(private val context: Context) {
     }
     
     /**
+     * Get calendar events for a specific pet
+     * iOS Reference: HomeView.swift lines 443-446
+     * @param petId Pet ID to filter events
+     * @return List of calendar events for the pet
+     */
+    fun getEventsForPet(petId: String): List<CalendarEvent> {
+        return getRifqCalendarEvents().filter { event ->
+            // Extract pet ID from event description or booking ID
+            event.description.contains("Pet:") && event.description.contains(petId)
+        }
+    }
+    
+    /**
+     * Load events for a specific pet (for AI integration)
+     * iOS Reference: HomeView.swift line 433
+     */
+    fun loadEventsForPet(petId: String): List<CalendarEvent> {
+        if (!hasCalendarPermission()) {
+            Log.w(TAG, "Calendar permissions not granted")
+            return emptyList()
+        }
+        return getEventsForPet(petId)
+    }
+    
+    /**
      * Get or create Rifq calendar
      * @return Calendar ID or null
      */
