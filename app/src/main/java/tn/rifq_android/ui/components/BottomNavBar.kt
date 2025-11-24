@@ -73,42 +73,44 @@ fun BottomNavBar(navController: NavHostController) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Home
-                StandardTabButton(
-                    tab = VetTab.HOME,
-                    isSelected = selectedTab == VetTab.HOME,
-                    onClick = {
-                        if (selectedTab != VetTab.HOME) {
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                                launchSingleTop = true
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StandardTabButton(
+                        tab = VetTab.HOME,
+                        isSelected = selectedTab == VetTab.HOME,
+                        onClick = {
+                            if (selectedTab != VetTab.HOME) {
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = true }
+                                    launchSingleTop = true
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
 
-                // Discover
-                StandardTabButton(
-                    tab = VetTab.DISCOVER,
-                    isSelected = selectedTab == VetTab.DISCOVER,
-                    onClick = {
-                        if (selectedTab != VetTab.DISCOVER) {
-                            navController.navigate("discover") {
-                                popUpTo("home") { inclusive = false }
-                                launchSingleTop = true
+                    StandardTabButton(
+                        tab = VetTab.DISCOVER,
+                        isSelected = selectedTab == VetTab.DISCOVER,
+                        onClick = {
+                            if (selectedTab != VetTab.DISCOVER) {
+                                navController.navigate("discover") {
+                                    popUpTo("home") { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                // AI Center Button (special styling)
                 CenterAIButton(
                     isSelected = selectedTab == VetTab.AI,
                     onClick = {
@@ -121,37 +123,41 @@ fun BottomNavBar(navController: NavHostController) {
                     }
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                // My Pets
-                StandardTabButton(
-                    tab = VetTab.MY_PETS,
-                    isSelected = selectedTab == VetTab.MY_PETS,
-                    onClick = {
-                        if (selectedTab != VetTab.MY_PETS) {
-                            navController.navigate("mypets") {
-                                popUpTo("home") { inclusive = false }
-                                launchSingleTop = true
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StandardTabButton(
+                        tab = VetTab.MY_PETS,
+                        isSelected = selectedTab == VetTab.MY_PETS,
+                        onClick = {
+                            if (selectedTab != VetTab.MY_PETS) {
+                                navController.navigate("mypets") {
+                                    popUpTo("home") { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
 
-                // Profile
-                StandardTabButton(
-                    tab = VetTab.PROFILE,
-                    isSelected = selectedTab == VetTab.PROFILE,
-                    onClick = {
-                        if (selectedTab != VetTab.PROFILE) {
-                            navController.navigate("profile") {
-                                popUpTo("home") { inclusive = false }
-                                launchSingleTop = true
+                    StandardTabButton(
+                        tab = VetTab.PROFILE,
+                        isSelected = selectedTab == VetTab.PROFILE,
+                        onClick = {
+                            if (selectedTab != VetTab.PROFILE) {
+                                navController.navigate("profile") {
+                                    popUpTo("home") { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -191,24 +197,43 @@ private fun StandardTabButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 6.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) VetCanyon else CardBackground)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) VetCanyon else VetStroke.copy(alpha = 0.6f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = tab.icon,
+                    contentDescription = tab.title,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (isSelected) Color.White else TextSecondary
+                )
+            }
+
             Icon(
                 imageVector = tab.icon,
-                contentDescription = tab.title,
+                contentDescription = null,
                 modifier = Modifier
-                    .size(18.dp)
-                    .scale(scale),
-                tint = if (isSelected) VetCanyon else TextSecondary
+                    .size(0.dp)
+                    .scale(scale)
             )
-            Spacer(modifier = Modifier.height(2.dp))
+
             Text(
                 text = tab.title,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = if (isSelected) VetCanyon else TextSecondary,
                 maxLines = 1
             )

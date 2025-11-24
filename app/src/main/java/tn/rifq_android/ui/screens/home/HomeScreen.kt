@@ -177,7 +177,12 @@ private fun HomeScreenContent(
         topBar = { 
             TopNavBar(
                 title = "Home",
-                navController = navController
+                navController = navController,
+                showBackButton = false,
+                onMessagesClick = { navController.navigate("conversations") },
+                onNotificationsClick = { navController.navigate("notifications") },
+                messageCount = messageCount,
+                notificationCount = notificationCount
             ) 
         },
         containerColor = PageBackground
