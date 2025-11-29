@@ -225,6 +225,7 @@ fun MainScreen(
     // iOS Reference: MainTabView.swift lines 34-35, 51-52
     
     Scaffold(
+        containerColor = Color.Unspecified, // Unspecified allows paw print background to show through
         bottomBar = {
             // Tab bar show/hide animation (iOS Reference: MainTabView.swift lines 51-52)
             AnimatedVisibility(
@@ -325,11 +326,28 @@ fun MainScreen(
                 CalendarScreen(navController = navController)
             }
             
+            // Pet Calendar Screen - Shows calendar for a specific pet
+            composable("calendar/{petId}",
+                arguments = listOf(navArgument("petId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val petId = backStackEntry.arguments?.getString("petId")
+                tn.rifq_android.ui.screens.calendar.PetCalendarScreen(
+                    navController = navController,
+                    petId = petId
+                )
+            }
+            
             // Add Calendar Event - Manual reminder creation (iOS Reference: AddCalendarEventView.swift)
-            composable("add_calendar_event") {
+            composable("add_calendar_event") { backStackEntry ->
+                // Extract query parameters from savedStateHandle (set via navigate with arguments)
+                val petId = backStackEntry.savedStateHandle.get<String>("petId")
+                val eventType = backStackEntry.savedStateHandle.get<String>("type")
+                
                 tn.rifq_android.ui.screens.calendar.AddCalendarEventScreen(
                     navController = navController,
-                    themePreference = themePreference
+                    themePreference = themePreference,
+                    petId = petId,
+                    eventType = eventType
                 )
             }
             

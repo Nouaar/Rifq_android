@@ -4,7 +4,7 @@ data class UpdatePetRequest(
     val name: String? = null,
     val species: String? = null,
     val breed: String? = null,
-    val age: Int? = null,
+    val age: Double? = null,
     val gender: String? = null,
     val color: String? = null,
     val weight: Double? = null,

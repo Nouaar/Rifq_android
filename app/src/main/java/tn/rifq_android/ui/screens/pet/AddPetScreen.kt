@@ -373,7 +373,7 @@ fun AddPetScreen(navController: NavHostController) {
                                     name = petName.trim(),
                                     species = petType.lowercase(),
                                     breed = petBreed.trim().takeIf { it.isNotBlank() },
-                                    age = petAge.toIntOrNull(),
+                                    age = petAge.toDoubleOrNull(),
                                     gender = petGender.takeIf { it.isNotBlank() }?.lowercase(),
                                     color = petColor.trim().takeIf { it.isNotBlank() },
                                     weight = petWeight.toDoubleOrNull(),

@@ -78,7 +78,6 @@ fun RegisterScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoginBackground)
     ) {
         Column(
             modifier = Modifier

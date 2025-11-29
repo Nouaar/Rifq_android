@@ -79,7 +79,7 @@ class PetViewModel(
         name: String,
         species: String,
         breed: String? = null,
-        age: Int? = null,
+        age: Double? = null,
         gender: String? = null,
         color: String? = null,
         weight: Double? = null,

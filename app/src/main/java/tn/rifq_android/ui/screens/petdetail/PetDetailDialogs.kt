@@ -216,7 +216,7 @@ fun EditPetDialog(
                     val updatedPet = pet.copy(
                         name = name,
                         breed = breed.takeIf { it.isNotBlank() },
-                        age = age.toIntOrNull(),
+                        age = age.toDoubleOrNull(),
                         gender = gender.takeIf { it.isNotBlank() },
                         color = color.takeIf { it.isNotBlank() },
                         weight = weight.toDoubleOrNull(),

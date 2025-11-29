@@ -793,10 +793,15 @@ private fun canProceed(step: AddPetStep, name: String, type: String): Boolean {
     }
 }
 
-private fun calculateAge(birthDate: Date): Int {
+private fun calculateAge(birthDate: Date): Double {
     val calendar = Calendar.getInstance()
     val birthCalendar = Calendar.getInstance().apply { time = birthDate }
 
     val years = calendar.get(Calendar.YEAR) - birthCalendar.get(Calendar.YEAR)
-    return if (years < 0) 0 else years
+    val months = calendar.get(Calendar.MONTH) - birthCalendar.get(Calendar.MONTH)
+    val days = calendar.get(Calendar.DAY_OF_MONTH) - birthCalendar.get(Calendar.DAY_OF_MONTH)
+    
+    // Calculate more precise age including months and days
+    val totalAge = years + (months / 12.0) + (days / 365.0)
+    return if (totalAge < 0) 0.0 else totalAge
 }

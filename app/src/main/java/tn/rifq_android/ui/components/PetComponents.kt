@@ -16,10 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.ui.theme.*
+import tn.rifq_android.ui.utils.PetUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -30,6 +33,8 @@ fun PetRow(
     age: String,
     color: Color,
     modifier: Modifier = Modifier,
+    photoUrl: String? = null,
+    species: String? = null,
     onClick: () -> Unit = {}
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -64,15 +69,26 @@ fun PetRow(
 
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "🐾",
-                    fontSize = 24.sp
-                )
+                if (photoUrl != null && photoUrl.isNotBlank()) {
+                    // Display pet image if available
+                    androidx.compose.foundation.Image(
+                        painter = rememberAsyncImagePainter(photoUrl),
+                        contentDescription = name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Fallback to emoji based on species
+                    Text(
+                        text = species?.let { PetUtils.getPetEmoji(it) } ?: "🐾",
+                        fontSize = 28.sp
+                    )
+                }
             }
 
 

@@ -43,7 +43,7 @@ object RetrofitInstance {
     }
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.BASIC  // Reduced logging for cleaner logcat
     }
 
     // Retrofit without auth to call refresh endpoint

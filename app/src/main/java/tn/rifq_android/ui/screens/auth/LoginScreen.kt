@@ -69,13 +69,11 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoginBackground)
             .padding(horizontal = 32.dp, vertical = 16.dp)
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .background(LoginBackground)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

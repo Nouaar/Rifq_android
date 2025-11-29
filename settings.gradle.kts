@@ -21,9 +21,8 @@ dependencyResolutionManagement {
             url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
             credentials {
                 username = "mapbox"
-                // Use the public token as downloads token for now
-                // If this fails, you'll need to create a secret token with DOWNLOADS:READ scope
-                password = providers.gradleProperty("MAPBOX_ACCESS_TOKEN").getOrElse("")
+                // Use the secret downloads token with DOWNLOADS:READ scope
+                password = providers.gradleProperty("MAPBOX_DOWNLOADS_TOKEN").getOrElse("")
             }
             authentication {
                 create<BasicAuthentication>("basic")

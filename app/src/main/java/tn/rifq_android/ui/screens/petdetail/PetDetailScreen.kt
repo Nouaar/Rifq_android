@@ -207,7 +207,18 @@ private fun PetDetailContent(navController: NavHostController, pet: Pet) {
                     Text(
                         text = buildString {
                             append(pet.breed ?: pet.species.replaceFirstChar { it.uppercase() })
-                            pet.age?.let { append(" • $it ${if (it == 1) "year" else "years"} old") }
+                            pet.age?.let { 
+                                val ageText = when {
+                                    it < 1.0 -> {
+                                        val months = (it * 12).toInt()
+                                        "$months ${if (months == 1) "month" else "months"} old"
+                                    }
+                                    it == 1.0 -> "1 year old"
+                                    it < 2.0 -> "${String.format("%.1f", it)} years old"
+                                    else -> "${it.toInt()} years old"
+                                }
+                                append(" • $ageText")
+                            }
                         },
                         fontSize = 16.sp,
                         color = TextSecondary

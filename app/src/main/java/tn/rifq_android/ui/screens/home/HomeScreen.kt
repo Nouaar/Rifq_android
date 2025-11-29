@@ -397,7 +397,7 @@ private fun PetHealthSnapshotSection(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     Column(
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
             text = "Pet Health Snapshot",
@@ -414,12 +414,12 @@ private fun PetHealthSnapshotSection(
                 color = TextSecondary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 12.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         } else {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 pets.forEach { pet ->
                     PetStatusRow(
@@ -441,7 +441,7 @@ private fun PetHealthSnapshotSection(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
+                        .padding(top = 2.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = VetCanyon.copy(alpha = 0.1f),
                         contentColor = VetCanyon
@@ -627,15 +627,15 @@ private fun PetStatusRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Pet avatar
             Box(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFF3F4F6)),
                 contentAlignment = Alignment.Center
             ) {
@@ -657,11 +657,12 @@ private fun PetStatusRow(
             // Pet info and status
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = pet.name,
@@ -669,6 +670,11 @@ private fun PetStatusRow(
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
+                    
+                    // AI-generated status badge
+                    if (status != null && status.status.isNotBlank()) {
+                        AIStatusBadge(status = status.status)
+                    }
                     
                     // Status pills
                     if (status != null && status.pills.isNotEmpty()) {
@@ -692,7 +698,7 @@ private fun PetStatusRow(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = TextSecondary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -712,6 +718,44 @@ private fun StatusPillChip(pill: tn.rifq_android.data.model.ai.StatusPill) {
             fontWeight = FontWeight.SemiBold,
             color = pill.textColor
         )
+    }
+}
+
+@Composable
+private fun AIStatusBadge(status: String) {
+    // Determine badge color based on status text
+    val badgeColor = when {
+        status.contains("Medication", ignoreCase = true) -> Color(0xFFFF9500) // Orange for medication
+        status.contains("Healthy", ignoreCase = true) -> Color(0xFF34C759) // Green for healthy
+        status.contains("Warning", ignoreCase = true) || status.contains("Alert", ignoreCase = true) -> Color(0xFFFF3B30) // Red for warnings
+        status.contains("Recovery", ignoreCase = true) -> Color(0xFF007AFF) // Blue for recovery
+        else -> VetCanyon // Default to theme color
+    }
+    
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(badgeColor.copy(alpha = 0.15f))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Status indicator dot
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(badgeColor)
+            )
+            Text(
+                text = status,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = badgeColor
+            )
+        }
     }
 }
 

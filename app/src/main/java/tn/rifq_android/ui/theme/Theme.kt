@@ -6,6 +6,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import tn.rifq_android.R
+import tn.rifq_android.ui.components.BackgroundBox
 
 private val DarkColorScheme = darkColorScheme(
     primary = OrangePrimary,
@@ -25,7 +27,7 @@ private val LightColorScheme = lightColorScheme(
     primary = OrangeAccent,
     secondary = OrangeLight,
     tertiary = OrangePrimary,
-    background = Color(0xFFF5F5F7),  // PageBackground
+    background = Color.White,  // White background - paw print overlay shows through
     surface = Color(0xFFFFFFFF),     // CardBackground
     surfaceVariant = Color(0xFFEFDBD1), // HeaderBackground
     onPrimary = Color.White,         // ChipSelectedText
@@ -47,9 +49,21 @@ fun AppTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    // Select background image and color based on theme
+    val backgroundColor = if (darkTheme) DarkBackground else Color.White
+    val backgroundImageRes = if (darkTheme) R.drawable.darkmode else R.drawable.paw_background
+
+    // Wrap with background image (under layer)
+    // The background image appears as an under layer on all screens automatically
+    // Light mode: paw_background.png, Dark mode: darkmode.png
+    BackgroundBox(
+        backgroundColor = backgroundColor,
+        backgroundImageRes = backgroundImageRes
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

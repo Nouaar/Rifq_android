@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import tn.rifq_android.data.model.pet.Pet
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
@@ -41,7 +42,9 @@ import java.util.*
 @Composable
 fun AddCalendarEventScreen(
     navController: NavHostController,
-    themePreference: tn.rifq_android.data.storage.ThemePreference
+    themePreference: tn.rifq_android.data.storage.ThemePreference,
+    petId: String? = null,
+    eventType: String? = null
 ) {
     val context = LocalContext.current
     val calendarManager = remember { CalendarManager(context) }
@@ -51,8 +54,19 @@ fun AddCalendarEventScreen(
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     
+    // Parse event type from parameter
+    val initialEventType = remember(eventType) {
+        eventType?.let {
+            try {
+                EventType.valueOf(it)
+            } catch (e: IllegalArgumentException) {
+                EventType.MEDICATION
+            }
+        } ?: EventType.MEDICATION
+    }
+    
     // Form state
-    var selectedEventType by remember { mutableStateOf(EventType.MEDICATION) }
+    var selectedEventType by remember { mutableStateOf(initialEventType) }
     var title by remember { mutableStateOf("") }
     var selectedPet by remember { mutableStateOf<Pet?>(null) }
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
@@ -68,6 +82,21 @@ fun AddCalendarEventScreen(
     
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
+    }
+    
+    // Set selected pet if petId is provided (from pet calendar navigation)
+    LaunchedEffect(petId, uiState) {
+        if (petId != null && petId.isNotBlank() && uiState is ProfileUiState.Success) {
+            val pets = (uiState as ProfileUiState.Success).pets
+            val foundPet = pets.find { it.id == petId }
+            if (foundPet != null) {
+                selectedPet = foundPet
+                // Pre-fill title with pet name if available
+                if (title.isEmpty()) {
+                    title = "${foundPet.name} - ${selectedEventType.displayName}"
+                }
+            }
+        }
     }
     
     // Date Picker
@@ -146,11 +175,22 @@ fun AddCalendarEventScreen(
                     // Pet Selection
                     item {
                         FormSection(title = "Pet") {
-                            SelectionCard(
-                                label = selectedPet?.name ?: "Select pet",
-                                icon = "🐾",
-                                onClick = { showPetPicker = true }
-                            )
+                            if (petId != null) {
+                                // Show selected pet as read-only when coming from pet calendar
+                                SelectionCard(
+                                    label = selectedPet?.name ?: "Loading...",
+                                    icon = "🐾",
+                                    onClick = { /* Disabled - pet is pre-selected */ },
+                                    enabled = false
+                                )
+                            } else {
+                                // Allow pet selection when not coming from pet calendar
+                                SelectionCard(
+                                    label = selectedPet?.name ?: "Select pet",
+                                    icon = "🐾",
+                                    onClick = { showPetPicker = true }
+                                )
+                            }
                         }
                     }
                     
@@ -267,31 +307,62 @@ fun AddCalendarEventScreen(
                                             }
                                             
                                             // Add to calendar using CalendarManager
+                                            // Format description to match iOS: "Pet ID: {petId}\nType: {type}\n{notes}"
                                             val eventId = calendarManager.addCustomEvent(
                                                 title = "${selectedEventType.icon} $title - ${selectedPet?.name}",
                                                 description = buildString {
-                                                    append("${selectedEventType.displayName}\n")
-                                                    append("Pet: ${selectedPet?.name}\n")
                                                     if (notes.isNotBlank()) {
-                                                        append("Notes: $notes\n")
+                                                        append(notes)
                                                     }
                                                     if (isRecurring) {
+                                                        if (notes.isNotBlank()) append("\n")
                                                         append("Repeats: ${recurrenceType.displayName}")
                                                     }
                                                 },
                                                 startTime = eventDateTime.timeInMillis,
                                                 durationMinutes = 30,
                                                 location = "",
-                                                recurrence = if (isRecurring) recurrenceType.rule else null
+                                                recurrence = if (isRecurring) recurrenceType.rule else null,
+                                                petId = selectedPet?.id,
+                                                eventType = selectedEventType.name.lowercase() // medication, vaccination, etc.
                                             )
                                             
                                             isSaving = false
                                             if (eventId != null) {
+                                                // Wait a moment for calendar to persist (like iOS does)
+                                                kotlinx.coroutines.delay(100)
+                                                
+                                                // Reload events after creating (iOS does this automatically)
+                                                // This ensures the event appears immediately in the app
+                                                val petIdToReload = selectedPet?.id
+                                                if (petIdToReload != null) {
+                                                    try {
+                                                        val updatedEvents = calendarManager.loadEventsForPet(petIdToReload)
+                                                        android.util.Log.d("AddCalendarEvent", "Reloaded ${updatedEvents.size} events after creation")
+                                                    } catch (e: Exception) {
+                                                        android.util.Log.e("AddCalendarEvent", "Failed to reload events: ${e.message}")
+                                                    }
+                                                }
+                                                
+                                                // Set flag to trigger reload in PetCalendarScreen
+                                                navController.previousBackStackEntry?.savedStateHandle?.set("eventAdded", true)
+                                                
                                                 showSuccessDialog = true
+                                            } else {
+                                                // Show error - calendar might not be available
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    "Failed to save event. Please ensure a calendar account is set up on your device.",
+                                                    android.widget.Toast.LENGTH_LONG
+                                                ).show()
                                             }
                                         } catch (e: Exception) {
                                             isSaving = false
-                                            // Handle error
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Error saving event: ${e.message}",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     }
                                 }
@@ -335,7 +406,8 @@ fun AddCalendarEventScreen(
                     )
                 }
                 
-                if (showPetPicker && state.pets.isNotEmpty()) {
+                // Only show pet picker if no pet is pre-selected (petId is null)
+                if (showPetPicker && state.pets.isNotEmpty() && petId == null) {
                     PetPickerDialog(
                         pets = state.pets,
                         selectedPet = selectedPet,
@@ -408,29 +480,58 @@ private fun SelectionCard(
     label: String,
     icon: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    if (enabled) {
+        Card(
+            onClick = onClick,
+            modifier = modifier,
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text(text = icon, fontSize = 20.sp)
-            Text(
-                text = label,
-                fontSize = 15.sp,
-                color = TextPrimary,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = icon, fontSize = 20.sp)
+                Text(
+                    text = label,
+                    fontSize = 15.sp,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary)
+            }
+        }
+    } else {
+        // Disabled state - non-clickable card
+        Card(
+            modifier = modifier,
+            colors = CardDefaults.cardColors(
+                containerColor = CardBackground.copy(alpha = 0.6f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = icon, fontSize = 20.sp)
+                Text(
+                    text = label,
+                    fontSize = 15.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(1f)
+                )
+                // No arrow icon for disabled state
+            }
         }
     }
 }
@@ -575,6 +676,7 @@ enum class EventType(val displayName: String, val icon: String) {
     MEDICATION("Medication", "💊"),
     VACCINATION("Vaccination", "💉"),
     APPOINTMENT("Vet Appointment", "🏥"),
+    REMINDER("Reminder", "🔔"),
     GROOMING("Grooming", "✂️"),
     FEEDING("Feeding Reminder", "🍖"),
     EXERCISE("Exercise", "🏃"),

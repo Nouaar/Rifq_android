@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 val PageBackground: Color
     @Composable
     @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.background
+    get() = Color.White.copy(alpha = 0f) // Fully transparent white - allows paw print background to show through
 
 val HeaderBackground: Color
     @Composable
@@ -61,6 +61,7 @@ val OrangeLight = Color(0xFFFDB947)
 val OrangePrimary = Color(0xFFFF7F32)
 val OrangeSplash = Color(0xFFE58D4D)
 val OrangeButton = Color(0xFFD07B4B)
+val OrangePawPrint = Color(0xFFFF9900) // #FF9900 - Color for paw print background pattern
 
 // Pet Avatar Colors
 val PetAvatarBrown = Color(0xFFD4A598)

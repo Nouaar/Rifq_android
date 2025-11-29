@@ -44,7 +44,6 @@ fun ResetPasswordScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoginBackground)
             .padding(horizontal = 32.dp, vertical = 16.dp)
     ) {
         Column(

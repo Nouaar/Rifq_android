@@ -70,7 +70,16 @@ class CalendarManager(private val context: Context) {
         }
         
         try {
-            val calendarId = getOrCreateRifqCalendar() ?: return null
+            // Try to get Rifq calendar, fallback to primary calendar if not found
+            var calendarId = getOrCreateRifqCalendar()
+            if (calendarId == null) {
+                Log.w(TAG, "No Rifq calendar found for booking, using primary calendar as fallback")
+                calendarId = getPrimaryCalendarId()
+                if (calendarId == null) {
+                    Log.e(TAG, "No calendar available on device")
+                    return null
+                }
+            }
             
             val startTime = parseDateTime(booking.dateTime) ?: System.currentTimeMillis()
             val duration = (booking.duration ?: 60) * 60 * 1000L // Convert minutes to milliseconds
@@ -94,6 +103,8 @@ class CalendarManager(private val context: Context) {
                 put(CalendarContract.Events.CALENDAR_ID, calendarId)
                 put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
                 put(CalendarContract.Events.HAS_ALARM, 1) // Enable reminder
+                // Add custom URI to identify Rifq booking events
+                put(CalendarContract.Events.CUSTOM_APP_URI, "rifq://booking/${booking.normalizedId}")
             }
             
             val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
@@ -115,11 +126,13 @@ class CalendarManager(private val context: Context) {
      * Add custom event to calendar (for manual reminders)
      * iOS Reference: CalendarManager.swift addEvent
      * @param title Event title
-     * @param description Event description
+     * @param description Event description (should include "Pet ID: {petId}\nType: {type}\n{notes}")
      * @param startTime Start time in milliseconds
      * @param durationMinutes Duration in minutes
      * @param location Event location
      * @param recurrence Recurrence rule (RRULE format)
+     * @param petId Pet ID to include in description (for iOS compatibility)
+     * @param eventType Event type to include in description (for iOS compatibility)
      * @return Event ID if successful, null otherwise
      */
     fun addCustomEvent(
@@ -128,31 +141,63 @@ class CalendarManager(private val context: Context) {
         startTime: Long,
         durationMinutes: Int,
         location: String,
-        recurrence: String? = null
+        recurrence: String? = null,
+        petId: String? = null,
+        eventType: String? = null
     ): Long? {
         if (!hasCalendarPermission()) {
             Log.w(TAG, "Calendar permissions not granted")
             return null
         }
         
-        val calendarId = getOrCreateRifqCalendar()
+        // Try to get Rifq calendar, fallback to primary calendar if not found
+        var calendarId = getOrCreateRifqCalendar()
         if (calendarId == null) {
-            Log.e(TAG, "No Rifq calendar found")
+            Log.w(TAG, "No Rifq calendar found, using primary calendar as fallback")
+            calendarId = getPrimaryCalendarId()
+            if (calendarId == null) {
+                Log.e(TAG, "No calendar available on device")
             return null
+            }
         }
         
         try {
             val endTime = startTime + (durationMinutes * 60 * 1000)
             
+            // Format description to match iOS format: "Pet ID: {petId}\nType: {type}\n{notes}"
+            // This ensures events can be found and parsed correctly
+            val formattedDescription = buildString {
+                if (petId != null) {
+                    append("Pet ID: $petId\n")
+                }
+                if (eventType != null) {
+                    append("Type: $eventType\n")
+                }
+                if (description.isNotBlank()) {
+                    // Remove any existing "Pet ID:" or "Type:" lines from description to avoid duplication
+                    val cleanDescription = description.lines()
+                        .filterNot { it.startsWith("Pet ID:") || it.startsWith("Type:") }
+                        .joinToString("\n")
+                        .trim()
+                    if (cleanDescription.isNotBlank()) {
+                        append("\n$cleanDescription")
+                    }
+                }
+            }
+            
             val values = ContentValues().apply {
                 put(CalendarContract.Events.CALENDAR_ID, calendarId)
                 put(CalendarContract.Events.TITLE, title)
-                put(CalendarContract.Events.DESCRIPTION, description)
+                put(CalendarContract.Events.DESCRIPTION, formattedDescription)
                 put(CalendarContract.Events.DTSTART, startTime)
                 put(CalendarContract.Events.DTEND, endTime)
                 put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
                 put(CalendarContract.Events.EVENT_LOCATION, location)
                 put(CalendarContract.Events.HAS_ALARM, 1)
+                
+                // Add custom URI to identify Rifq events
+                // This helps us find events later regardless of which calendar they're in
+                put(CalendarContract.Events.CUSTOM_APP_URI, "rifq://event/${System.currentTimeMillis()}")
                 
                 // Add recurrence rule if provided
                 if (recurrence != null) {
@@ -208,6 +253,7 @@ class CalendarManager(private val context: Context) {
     
     /**
      * Get all Rifq calendar events
+     * Now searches ALL calendars to find Rifq events, not just the Rifq calendar
      * @return List of calendar events
      */
     fun getRifqCalendarEvents(): List<CalendarEvent> {
@@ -216,9 +262,10 @@ class CalendarManager(private val context: Context) {
             return emptyList()
         }
         
+        // First try to get events from Rifq calendar if it exists
         try {
-            val calendarId = getOrCreateRifqCalendar() ?: return emptyList()
-            
+            val rifqCalendarId = findRifqCalendar()
+            if (rifqCalendarId != null) {
             val projection = arrayOf(
                 CalendarContract.Events._ID,
                 CalendarContract.Events.TITLE,
@@ -230,7 +277,7 @@ class CalendarManager(private val context: Context) {
             )
             
             val selection = "${CalendarContract.Events.CALENDAR_ID} = ?"
-            val selectionArgs = arrayOf(calendarId.toString())
+                val selectionArgs = arrayOf(rifqCalendarId.toString())
             val sortOrder = "${CalendarContract.Events.DTSTART} ASC"
             
             val cursor = context.contentResolver.query(
@@ -267,26 +314,187 @@ class CalendarManager(private val context: Context) {
                 }
             }
             
-            Log.d(TAG, "📅 Retrieved ${events.size} calendar events")
+                if (events.isNotEmpty()) {
+                    Log.d(TAG, "📅 Retrieved ${events.size} events from Rifq calendar")
             return events
-            
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get calendar events: ${e.message}")
-            return emptyList()
+            Log.w(TAG, "Failed to get events from Rifq calendar: ${e.message}")
         }
+        
+        // Fallback: search all calendars for Rifq events
+        Log.d(TAG, "Searching all calendars for Rifq events")
+        return getAllCalendarEvents()
     }
     
     /**
      * Get calendar events for a specific pet
      * iOS Reference: HomeView.swift lines 443-446
+     * Matches iOS format: extracts "Pet ID: {petId}" from event notes
      * @param petId Pet ID to filter events
      * @return List of calendar events for the pet
      */
     fun getEventsForPet(petId: String): List<CalendarEvent> {
-        return getRifqCalendarEvents().filter { event ->
-            // Extract pet ID from event description or booking ID
-            event.description.contains("Pet:") && event.description.contains(petId)
+        // Get all events (from any calendar, not just Rifq calendar)
+        val allEvents = getAllCalendarEvents()
+        return allEvents.filter { event ->
+            // Extract pet ID from event description - match iOS format "Pet ID: {petId}"
+            val extractedPetId = extractPetIdFromDescription(event.description)
+            extractedPetId == petId || 
+            // Fallback: check if description contains pet ID (for older events)
+            (event.description.contains("Pet ID: $petId") || 
+             event.description.contains("Pet:") && event.description.contains(petId) ||
+             event.title.contains(petId))
         }
+    }
+    
+    /**
+     * Extract pet ID from event description
+     * iOS format: "Pet ID: {petId}\nType: {type}\n{notes}"
+     * @param description Event description
+     * @return Pet ID if found, null otherwise
+     */
+    private fun extractPetIdFromDescription(description: String): String? {
+        val lines = description.split("\n")
+        for (line in lines) {
+            if (line.startsWith("Pet ID: ")) {
+                return line.substringAfter("Pet ID: ").trim()
+            }
+        }
+        return null
+    }
+    
+    /**
+     * Get all calendar events (from all calendars, not just Rifq)
+     * Used as fallback when Rifq calendar doesn't exist
+     * Searches ALL calendars to find Rifq-related events
+     */
+    fun getAllCalendarEvents(): List<CalendarEvent> {
+        if (!hasCalendarPermission()) {
+            return emptyList()
+        }
+        
+        try {
+            // Get all calendars
+            val calendars = getAllAvailableCalendars()
+            if (calendars.isEmpty()) {
+                Log.w(TAG, "No calendars available")
+                return emptyList()
+            }
+            
+            val projection = arrayOf(
+                CalendarContract.Events._ID,
+                CalendarContract.Events.TITLE,
+                CalendarContract.Events.DESCRIPTION,
+                CalendarContract.Events.DTSTART,
+                CalendarContract.Events.DTEND,
+                CalendarContract.Events.EVENT_LOCATION,
+                CalendarContract.Events.CUSTOM_APP_URI,
+                CalendarContract.Events.CALENDAR_ID
+            )
+            
+            val events = mutableListOf<CalendarEvent>()
+            
+            // Query each calendar separately (more reliable than IN clause)
+            for (calendarId in calendars) {
+                try {
+                    val selection = "${CalendarContract.Events.CALENDAR_ID} = ?"
+                    val selectionArgs = arrayOf(calendarId.toString())
+                    val sortOrder = "${CalendarContract.Events.DTSTART} ASC"
+                    
+                    val cursor = context.contentResolver.query(
+                        CalendarContract.Events.CONTENT_URI,
+                        projection,
+                        selection,
+                        selectionArgs,
+                        sortOrder
+                    )
+                    
+                    cursor?.use {
+                        while (it.moveToNext()) {
+                            val eventId = it.getLong(0)
+                            val title = it.getString(1) ?: ""
+                            val description = it.getString(2) ?: ""
+                            val startTime = it.getLong(3)
+                            val endTime = it.getLong(4)
+                            val location = it.getString(5) ?: ""
+                            val customUri = it.getString(6) ?: ""
+                            
+                            // Filter to only include Rifq-related events
+                            // Match iOS format: events have "Pet ID:" in description
+                            // Or fallback to checking for event type keywords
+                            val isRifqEvent = description.contains("Pet ID:") ||
+                                             description.contains("Type:") ||
+                                             description.contains("Pet:") || 
+                                             description.contains("Medication") ||
+                                             description.contains("Vaccination") ||
+                                             description.contains("Appointment") ||
+                                             description.contains("Reminder") ||
+                                             title.contains("💊") ||
+                                             title.contains("💉") ||
+                                             title.contains("🏥") ||
+                                             title.contains("🔔") ||
+                                             customUri.startsWith("rifq://")
+                            
+                            if (isRifqEvent) {
+                                events.add(
+                                    CalendarEvent(
+                                        id = eventId,
+                                        title = title,
+                                        description = description,
+                                        startTime = startTime,
+                                        endTime = endTime,
+                                        location = location,
+                                        bookingId = extractBookingId(customUri)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to query calendar $calendarId: ${e.message}")
+                    // Continue with next calendar
+                }
+            }
+            
+            Log.d(TAG, "📅 Retrieved ${events.size} Rifq events from all calendars")
+            return events
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get calendar events: ${e.message}", e)
+            return emptyList()
+        }
+    }
+    
+    /**
+     * Get all available calendar IDs on the device
+     */
+    private fun getAllAvailableCalendars(): List<Long> {
+        val calendarIds = mutableListOf<Long>()
+        
+        try {
+            val projection = arrayOf(CalendarContract.Calendars._ID)
+            val cursor = context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                projection,
+                null,
+                null,
+                null
+            )
+            
+            cursor?.use {
+                while (it.moveToNext()) {
+                    calendarIds.add(it.getLong(0))
+                }
+            }
+            
+            Log.d(TAG, "Found ${calendarIds.size} calendars on device")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get calendars: ${e.message}")
+        }
+        
+        return calendarIds
     }
     
     /**
@@ -298,6 +506,8 @@ class CalendarManager(private val context: Context) {
             Log.w(TAG, "Calendar permissions not granted")
             return emptyList()
         }
+        // Ensure calendar exists before loading events
+        getOrCreateRifqCalendar() ?: getPrimaryCalendarId()
         return getEventsForPet(petId)
     }
     
@@ -367,29 +577,60 @@ class CalendarManager(private val context: Context) {
     
     /**
      * Get primary calendar ID
+     * Falls back to any available calendar if primary is not found
      */
     private fun getPrimaryCalendarId(): Long? {
         try {
-            val projection = arrayOf(CalendarContract.Calendars._ID)
-            val selection = "${CalendarContract.Calendars.IS_PRIMARY} = ?"
-            val selectionArgs = arrayOf("1")
+            val projection = arrayOf(
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.NAME,
+                CalendarContract.Calendars.ACCOUNT_NAME
+            )
             
-            val cursor = context.contentResolver.query(
+            // First try to get primary calendar
+            val primarySelection = "${CalendarContract.Calendars.IS_PRIMARY} = ?"
+            val primarySelectionArgs = arrayOf("1")
+            
+            val primaryCursor = context.contentResolver.query(
                 CalendarContract.Calendars.CONTENT_URI,
                 projection,
-                selection,
-                selectionArgs,
+                primarySelection,
+                primarySelectionArgs,
                 null
             )
             
-            cursor?.use {
+            primaryCursor?.use {
                 if (it.moveToFirst()) {
-                    return it.getLong(0)
+                    val calendarId = it.getLong(0)
+                    val calendarName = it.getString(1) ?: ""
+                    Log.d(TAG, "Found primary calendar: $calendarName (ID: $calendarId)")
+                    return calendarId
                 }
             }
             
-            // Fallback: get first calendar
-            val fallbackCursor = context.contentResolver.query(
+            // Fallback: get first writable calendar
+            val writableSelection = "${CalendarContract.Calendars.CAN_MODIFY_TIME_ZONE} = ? OR ${CalendarContract.Calendars.CAN_ORGANIZER_RESPOND} = ?"
+            val writableSelectionArgs = arrayOf("1", "1")
+            
+            val writableCursor = context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                projection,
+                writableSelection,
+                writableSelectionArgs,
+                null
+            )
+            
+            writableCursor?.use {
+                if (it.moveToFirst()) {
+                    val calendarId = it.getLong(0)
+                    val calendarName = it.getString(1) ?: ""
+                    Log.d(TAG, "Found writable calendar: $calendarName (ID: $calendarId)")
+                    return calendarId
+                }
+            }
+            
+            // Last resort: get ANY calendar
+            val anyCursor = context.contentResolver.query(
                 CalendarContract.Calendars.CONTENT_URI,
                 projection,
                 null,
@@ -397,13 +638,19 @@ class CalendarManager(private val context: Context) {
                 null
             )
             
-            fallbackCursor?.use {
+            anyCursor?.use {
                 if (it.moveToFirst()) {
-                    return it.getLong(0)
+                    val calendarId = it.getLong(0)
+                    val calendarName = it.getString(1) ?: ""
+                    Log.d(TAG, "Found any calendar: $calendarName (ID: $calendarId)")
+                    return calendarId
                 }
             }
+            
+            Log.w(TAG, "No calendars found on device. User may need to set up a calendar account.")
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get primary calendar: ${e.message}")
+            Log.e(TAG, "Failed to get calendar: ${e.message}", e)
         }
         
         return null

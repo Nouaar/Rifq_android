@@ -3,7 +3,9 @@ package tn.rifq_android.ui.screens.mypets
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,9 +25,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import tn.rifq_android.ui.components.*
 import tn.rifq_android.ui.theme.*
+import tn.rifq_android.util.CalendarEvent
+import tn.rifq_android.util.CalendarManager
 import tn.rifq_android.viewmodel.profile.ProfileViewModel
 import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 import tn.rifq_android.viewmodel.profile.ProfileUiState
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,8 +85,7 @@ fun MyPetsScreen(
 private fun LoadingScreen() {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(PageBackground),
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(color = VetCanyon)
@@ -91,8 +96,7 @@ private fun LoadingScreen() {
 private fun ErrorScreen(message: String, onRetry: () -> Unit) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(PageBackground),
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -142,6 +146,7 @@ private fun MyPetsContent(
                 item {
                     CalendarSection(
                         navController = navController,
+                        pets = pets,
                         modifier = Modifier.padding(horizontal = 18.dp)
                     )
                 }
@@ -201,8 +206,10 @@ private fun MyPetsContent(
                     PetRow(
                         name = pet.name,
                         breed = pet.breed ?: pet.species.replaceFirstChar { it.uppercase() },
-                        age = pet.age?.let { "$it years" } ?: "Unknown age",
+                        age = pet.age?.let { formatAge(it) } ?: "Unknown age",
                         color = VetCanyon,
+                        photoUrl = pet.photo,
+                        species = pet.species,
                         modifier = Modifier.padding(horizontal = 18.dp),
                         onClick = { navController.navigate("pet_detail/${pet.id}") }
                     )
@@ -220,8 +227,58 @@ private fun MyPetsContent(
 @Composable
 private fun CalendarSection(
     navController: NavHostController,
+    pets: List<tn.rifq_android.data.model.pet.Pet>,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val calendarManager = remember { CalendarManager(context) }
+    var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    
+    // Load events for all pets coming this week
+    LaunchedEffect(pets.map { it.id }) {
+        if (calendarManager.hasCalendarPermission() && pets.isNotEmpty()) {
+            isLoading = true
+            try {
+                val now = System.currentTimeMillis()
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = now
+                // Set to start of week (Monday)
+                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                val weekStart = calendar.timeInMillis
+                
+                // Set to end of week (Sunday 23:59:59)
+                calendar.add(Calendar.DAY_OF_WEEK, 6)
+                calendar.set(Calendar.HOUR_OF_DAY, 23)
+                calendar.set(Calendar.MINUTE, 59)
+                calendar.set(Calendar.SECOND, 59)
+                val weekEnd = calendar.timeInMillis
+                
+                // Load events for all pets
+                val allEvents = mutableListOf<CalendarEvent>()
+                pets.forEach { pet ->
+                    pet.id?.let { petId ->
+                        val petEvents = calendarManager.loadEventsForPet(petId)
+                        allEvents.addAll(petEvents)
+                    }
+                }
+                
+                // Filter to this week only
+                events = allEvents.filter { 
+                    it.startTime >= weekStart && it.startTime <= weekEnd 
+                }.sortedBy { it.startTime }
+            } catch (e: Exception) {
+                android.util.Log.e("MyPetsScreen", "Failed to load events: ${e.message}")
+                events = emptyList()
+            }
+            isLoading = false
+        }
+    }
+    
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -238,35 +295,175 @@ private fun CalendarSection(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
             border = BorderStroke(1.dp, VetStroke.copy(alpha = 0.3f))
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DateRange,
-                    contentDescription = "Calendar",
-                    modifier = Modifier.size(24.dp),
-                    tint = TextSecondary
-                )
-                Text(
-                    text = "No events this week",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextSecondary
-                )
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = VetCanyon,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+                events.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.DateRange,
+                            contentDescription = "Calendar",
+                            modifier = Modifier.size(24.dp),
+                            tint = TextSecondary
+                        )
+                        Text(
+                            text = "No events this week",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        events.take(3).forEach { event ->
+                            EventItemCompact(event, pets, navController)
+                        }
+                        if (events.size > 3) {
+                            TextButton(
+                                onClick = { navController.navigate("calendar") },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "View ${events.size - 3} more",
+                                    fontSize = 12.sp,
+                                    color = VetCanyon
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-private fun formatAge(age: Int?): String {
-    return when (age) {
-        null -> "Unknown age"
-        0 -> "Less than 1 year"
-        1 -> "1 year old"
-        else -> "$age years old"
+@Composable
+private fun EventItemCompact(
+    event: CalendarEvent,
+    pets: List<tn.rifq_android.data.model.pet.Pet>,
+    navController: NavHostController
+) {
+    // Extract pet ID from event description
+    val petId = extractPetIdFromEvent(event)
+    val pet = pets.find { it.id == petId }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                petId?.let { navController.navigate("calendar/$it") }
+            }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(VetCanyon.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.DateRange,
+                contentDescription = null,
+                tint = VetCanyon,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = event.title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                maxLines = 1
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatEventTimeCompact(event.startTime),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+                if (pet != null) {
+                    Text(
+                        text = "•",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = pet.name,
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun extractPetIdFromEvent(event: CalendarEvent): String? {
+    val lines = event.description.split("\n")
+    for (line in lines) {
+        if (line.startsWith("Pet ID: ")) {
+            return line.substringAfter("Pet ID: ").trim()
+        }
+    }
+    return null
+}
+
+private fun formatEventTimeCompact(timestamp: Long): String {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = timestamp
+    val dayOfWeek = SimpleDateFormat("EEE", Locale.US).format(Date(timestamp))
+    val time = SimpleDateFormat("hh:mm a", Locale.US).format(Date(timestamp))
+    return "$dayOfWeek, $time"
+}
+
+private fun formatAge(age: Double?): String {
+    return when {
+        age == null -> "Unknown age"
+        age < 1.0 -> {
+            val months = (age * 12).toInt()
+            when (months) {
+                0 -> "Less than 1 month"
+                1 -> "1 month old"
+                else -> "$months months old"
+            }
+        }
+        age == 1.0 -> "1 year old"
+        age < 2.0 -> "${String.format("%.1f", age)} years old"
+        else -> "${age.toInt()} years old"
     }
 }

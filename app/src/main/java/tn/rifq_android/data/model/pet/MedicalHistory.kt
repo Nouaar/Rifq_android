@@ -1,6 +1,7 @@
 package tn.rifq_android.data.model.pet
 
 import com.squareup.moshi.Json
+import tn.rifq_android.data.model.medical.MedicationItem
 
 /**
  * Medical history information embedded in pet response
@@ -10,7 +11,7 @@ data class MedicalHistory(
     val pet: String, // Pet ID reference
     val vaccinations: List<String> = emptyList(),
     val chronicConditions: List<String> = emptyList(),
-    val currentMedications: List<String> = emptyList(),
+    val currentMedications: List<MedicationItem> = emptyList(),
     val createdAt: String? = null,
     val updatedAt: String? = null
 )

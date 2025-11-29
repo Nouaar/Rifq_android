@@ -110,7 +110,7 @@ fun EditPetScreen(
     var microchip by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
     var height by rememberSaveable { mutableStateOf("") }
-    var age by rememberSaveable { mutableStateOf(0f) }
+    var age by rememberSaveable { mutableStateOf("") }
 
     var vaccinations by rememberSaveable { mutableStateOf("") }
     var chronicConditions by rememberSaveable { mutableStateOf("") }
@@ -142,11 +142,11 @@ fun EditPetScreen(
             microchip = pet.microchipId.orEmpty()
             weight = pet.weight?.toString().orEmpty()
             height = pet.height?.toString().orEmpty()
-            age = (pet.age ?: 0).toFloat()
+            age = pet.age?.toString() ?: ""
 
             vaccinations = pet.medicalHistory?.vaccinations?.joinToString(", ") ?: ""
             chronicConditions = pet.medicalHistory?.chronicConditions?.joinToString(", ") ?: ""
-            medications = pet.medicalHistory?.currentMedications?.joinToString(", ") ?: ""
+            medications = pet.medicalHistory?.currentMedications?.joinToString(", ") { "${it.name}: ${it.dosage}" } ?: ""
         }
     }
 
@@ -189,7 +189,7 @@ fun EditPetScreen(
                                 microchipId = microchip.ifBlank { null },
                                 weight = weight.toDoubleOrNull(),
                                 height = height.toDoubleOrNull(),
-                                age = age.toInt().takeIf { it > 0 }
+                                age = age.toDoubleOrNull()?.takeIf { it > 0.0 }
                             )
                             viewModel.updatePet(
                                 petId = petId,
@@ -339,8 +339,8 @@ private fun EditPetContent(
     onWeightChange: (String) -> Unit,
     height: String,
     onHeightChange: (String) -> Unit,
-    age: Float,
-    onAgeChange: (Float) -> Unit,
+    age: String,
+    onAgeChange: (String) -> Unit,
     vaccinations: String,
     onVaccinationsChange: (String) -> Unit,
     conditions: String,
@@ -508,10 +508,11 @@ private fun EditPetContent(
                 }
 
                 Column {
-                    Text("Age: ${age.toInt()} yrs", fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    val ageFloat = age.toFloatOrNull() ?: 0f
+                    Text("Age: ${ageFloat.toInt()} yrs", fontWeight = FontWeight.SemiBold, color = TextPrimary)
                     Slider(
-                        value = age,
-                        onValueChange = onAgeChange,
+                        value = ageFloat,
+                        onValueChange = { onAgeChange(it.toString()) },
                         valueRange = 0f..25f,
                         colors = SliderDefaults.colors(
                             activeTrackColor = VetCanyon,
