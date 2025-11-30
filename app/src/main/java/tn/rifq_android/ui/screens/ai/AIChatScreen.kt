@@ -51,11 +51,11 @@ fun AIChatScreen(
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-    
+
     var userInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Quick question suggestions
     val quickQuestions = listOf(
         "What vaccines does my dog need?",
@@ -64,7 +64,7 @@ fun AIChatScreen(
         "What's the best food for puppies?",
         "Signs of pet dehydration?"
     )
-    
+
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -133,7 +133,7 @@ fun AIChatScreen(
                     )
                 }
             }
-            
+
             // Messages List
             Box(
                 modifier = Modifier
@@ -160,7 +160,7 @@ fun AIChatScreen(
                                     color = TextSecondary,
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
-                                
+
                                 quickQuestions.forEach { question ->
                                     SuggestionChip(
                                         onClick = {
@@ -181,7 +181,7 @@ fun AIChatScreen(
                             }
                         }
                     }
-                    
+
                     // Chat Messages
                     items(messages) { message ->
                         MessageBubble(
@@ -189,14 +189,14 @@ fun AIChatScreen(
                             isFromUser = message.isFromUser
                         )
                     }
-                    
+
                     // Typing indicator
                     if (isLoading) {
                         item {
                             TypingIndicatorAI()
                         }
                     }
-                    
+
                     // Error message
                     if (error != null) {
                         item {
@@ -228,7 +228,7 @@ fun AIChatScreen(
                     }
                 }
             }
-            
+
             // Input Area
             MessageInputAI(
                 text = userInput,
@@ -257,7 +257,7 @@ private fun MessageBubble(
         horizontalArrangement = if (isFromUser) Arrangement.End else Arrangement.Start
     ) {
         if (!isFromUser) Spacer(modifier = Modifier.width(40.dp))
-        
+
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = if (isFromUser) VetCanyon else CardBackground,
@@ -282,14 +282,14 @@ private fun MessageBubble(
                         )
                     }
                 }
-                
+
                 Text(
                     text = message.content,
                     fontSize = 14.sp,
                     color = if (isFromUser) Color.White else TextPrimary,
                     lineHeight = 20.sp
                 )
-                
+
                 Text(
                     text = formatTimestamp(message.timestamp),
                     fontSize = 11.sp,
@@ -298,7 +298,7 @@ private fun MessageBubble(
                 )
             }
         }
-        
+
         if (isFromUser) Spacer(modifier = Modifier.width(40.dp))
     }
 }
@@ -337,7 +337,7 @@ private fun MessageInputAI(
                 maxLines = 4,
                 enabled = enabled
             )
-            
+
             IconButton(
                 onClick = onSend,
                 enabled = enabled && text.isNotBlank(),
@@ -365,7 +365,7 @@ private fun TypingIndicatorAI() {
         horizontalArrangement = Arrangement.Start
     ) {
         Spacer(modifier = Modifier.width(40.dp))
-        
+
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = CardBackground,
@@ -379,7 +379,7 @@ private fun TypingIndicatorAI() {
                 Text("🤖", fontSize = 14.sp)
                 repeat(3) { index ->
                     var alpha by remember { mutableStateOf(0.3f) }
-                    
+
                     LaunchedEffect(Unit) {
                         while (true) {
                             delay(index * 200L)
@@ -389,7 +389,7 @@ private fun TypingIndicatorAI() {
                             delay(200)
                         }
                     }
-                    
+
                     Box(
                         modifier = Modifier
                             .size(6.dp)
@@ -404,7 +404,7 @@ private fun TypingIndicatorAI() {
 private fun formatTimestamp(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
-    
+
     return when {
         diff < 60000 -> "Just now"
         diff < 3600000 -> "${diff / 60000}m ago"
@@ -418,6 +418,6 @@ data class AIChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val content: String,
     val isFromUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val imageUrl: String? = null
 )
-
