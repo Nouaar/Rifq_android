@@ -145,6 +145,18 @@ object RetrofitInstance {
             .build()
     }
 
+    // Separate OkHttp client for AI endpoints with longer timeouts
+    private val aiClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .authenticator(tokenAuthenticator)
+            .addInterceptor(authInterceptor)
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .build()
+    }
+
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
@@ -152,14 +164,25 @@ object RetrofitInstance {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
     }
-
+    // Retrofit for general APIs (shorter timeouts)
     val api: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
     val profileApi: ProfileApi by lazy { retrofit.create(ProfileApi::class.java) }
     val petsApi: PetsApi by lazy { retrofit.create(PetsApi::class.java) }
     val userApi: UserApi by lazy { retrofit.create(UserApi::class.java) }
     val chatApi: ChatApi by lazy { retrofit.create(ChatApi::class.java) }
     val vetSitterApi: VetSitterApi by lazy { retrofit.create(VetSitterApi::class.java) }
-    val aiApi: AIApi by lazy { retrofit.create(AIApi::class.java) }
+
+    // Retrofit instance for AI endpoints (longer timeouts)
+    private val aiRetrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(aiClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+    }
+
+    // AI API uses dedicated Retrofit with longer timeouts
+    val aiApi: AIApi by lazy { aiRetrofit.create(AIApi::class.java) }
     val bookingApi: BookingApi by lazy { retrofit.create(BookingApi::class.java) }
     val notificationApi: NotificationApi by lazy { retrofit.create(NotificationApi::class.java) }
     val subscriptionApi: SubscriptionApi by lazy { retrofit.create(SubscriptionApi::class.java) }

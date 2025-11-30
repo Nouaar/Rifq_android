@@ -54,6 +54,55 @@ data class AIResponseModel(
     val conversationId: String? = null
 )
 
+/**
+ * Chatbot Request Model
+ * Backend: POST /chatbot/message
+ */
+@JsonClass(generateAdapter = true)
+data class ChatbotMessageRequest(
+    @Json(name = "message") val message: String,
+    @Json(name = "context") val context: String? = null,
+    @Json(name = "image") val image: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ChatbotImageAnalysisRequest(
+    @Json(name = "image") val image: String,
+    @Json(name = "prompt") val prompt: String? = null
+)
+
+/**
+ * Chatbot Response Model
+ * Backend: POST /chatbot/message response
+ */
+@JsonClass(generateAdapter = true)
+data class ChatbotResponse(
+    @Json(name = "response") val response: String,
+    @Json(name = "timestamp") val timestamp: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ChatbotHistoryItem(
+    @Json(name = "_id") val _id: String,
+    val role: String,
+    val content: String,
+    val imageUrl: String?,
+    val imagePrompt: String?,
+    val createdAt: String,
+    val updatedAt: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class ChatbotHistoryResponse(
+    val messages: List<ChatbotHistoryItem>,
+    val total: Int
+)
+
+@JsonClass(generateAdapter = true)
+data class ChatbotDeleteResponse(
+    val message: String
+)
+
 // UI models for display
 data class PetTip(
     val id: String,
