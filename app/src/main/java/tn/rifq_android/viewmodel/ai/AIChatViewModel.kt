@@ -114,12 +114,8 @@ class AIChatViewModel(private val context: Context) : ViewModel() {
                     aiApi.generateAIResponse(request)
                 }
 
-                // Add AI response
-                val aiMsg = AIChatMessage(
-                    content = response.response,
-                    isFromUser = false
-                )
-                _messages.value = _messages.value + aiMsg
+                // Refresh messages from server so saved imageUrl and message ordering are reflected
+                fetchHistory()
 
             } catch (e: Exception) {
 
@@ -135,16 +131,8 @@ class AIChatViewModel(private val context: Context) : ViewModel() {
 
                         val retryResponse = aiApi.generateAIResponse(retryRequest)
 
-                        val infoMsg = AIChatMessage(
-                            content = "Note: the image was too large and was not sent. Responding to text only.",
-                            isFromUser = false
-                        )
-                        val aiMsg = AIChatMessage(
-                            content = retryResponse.response,
-                            isFromUser = false
-                        )
-
-                        _messages.value = _messages.value + infoMsg + aiMsg
+                        // On retry success, refresh messages from server
+                        fetchHistory()
                         _error.value = null
 
                     } catch (ex2: Exception) {
@@ -187,7 +175,8 @@ class AIChatViewModel(private val context: Context) : ViewModel() {
                     AIChatMessage(
                         content = item.content,
                         isFromUser = item.role == "user",
-                        timestamp = ts
+                        timestamp = ts,
+                        imageUrl = item.imageUrl
                     )
                 }
                 if (mapped.isNotEmpty()) {
