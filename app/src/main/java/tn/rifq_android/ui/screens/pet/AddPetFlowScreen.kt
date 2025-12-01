@@ -58,10 +58,18 @@ fun AddPetFlowScreen(navController: NavHostController) {
     var selectedImageFile by remember { mutableStateOf<java.io.File?>(null) }
 
 
+    // Medical info states - using sets and lists for better management
+    var selectedVaccinations by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var customVaccination by remember { mutableStateOf("") }
+    var selectedAllergies by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var customAllergy by remember { mutableStateOf("") }
+    var conditions by remember { mutableStateOf("") }
+    var medications by remember { mutableStateOf<List<MedicationEntry>>(emptyList()) }
+    
+    // Computed string values for saving
     var vaccinations by remember { mutableStateOf("") }
     var allergies by remember { mutableStateOf("") }
-    var conditions by remember { mutableStateOf("") }
-    var medications by remember { mutableStateOf("") }
+    var medicationsString by remember { mutableStateOf("") }
 
 
     val imagePicker = rememberLauncherForActivityResult(
@@ -145,14 +153,24 @@ fun AddPetFlowScreen(navController: NavHostController) {
                             }
                         )
                         AddPetStep.MEDICAL_INFO -> MedicalInfoStep(
-                            vaccinations = vaccinations,
-                            onVaccinationsChange = { vaccinations = it },
-                            allergies = allergies,
-                            onAllergiesChange = { allergies = it },
+                            species = petType,
+                            selectedVaccinations = selectedVaccinations,
+                            onSelectedVaccinationsChange = { selectedVaccinations = it },
+                            customVaccination = customVaccination,
+                            onCustomVaccinationChange = { customVaccination = it },
+                            selectedAllergies = selectedAllergies,
+                            onSelectedAllergiesChange = { selectedAllergies = it },
+                            customAllergy = customAllergy,
+                            onCustomAllergyChange = { customAllergy = it },
                             conditions = conditions,
                             onConditionsChange = { conditions = it },
                             medications = medications,
-                            onMedicationsChange = { medications = it }
+                            onMedicationsChange = { medications = it },
+                            onUpdateDraft = { vacc, allerg, meds ->
+                                vaccinations = vacc
+                                allergies = allerg
+                                medicationsString = meds
+                            }
                         )
                         AddPetStep.REVIEW -> ReviewStep(
                             name = petName,
@@ -165,7 +183,7 @@ fun AddPetFlowScreen(navController: NavHostController) {
                             vaccinations = vaccinations,
                             allergies = allergies,
                             conditions = conditions,
-                            medications = medications,
+                            medications = medicationsString,
                             imageUri = selectedImageUri
                         )
                     }
@@ -214,6 +232,13 @@ fun AddPetFlowScreen(navController: NavHostController) {
 enum class AddPetStep {
     PET_INFO, MEDICAL_INFO, REVIEW
 }
+
+// Medication Entry Data Class
+data class MedicationEntry(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String = "",
+    val dosage: String = ""
+)
 
 @Composable
 private fun StepIndicator(currentStep: AddPetStep, modifier: Modifier = Modifier) {
@@ -336,7 +361,7 @@ private fun PetInfoStep(
                     PetDropdownField(
                         title = "Type",
                         value = type,
-                        options = listOf("Dog", "Cat", "Bird", "Rabbit", "Other"),
+                        options = listOf("Dog", "Cat", "Bird", "Rabbit", "Sheep", "Goat", "Horse", "Pig", "Chicken", "Duck", "Hamster", "Guinea Pig", "Ferret", "Turtle", "Fish", "Other"),
                         onValueChange = onTypeChange
                     )
 
@@ -379,15 +404,46 @@ private fun PetInfoStep(
 
 @Composable
 private fun MedicalInfoStep(
-    vaccinations: String,
-    onVaccinationsChange: (String) -> Unit,
-    allergies: String,
-    onAllergiesChange: (String) -> Unit,
+    species: String,
+    selectedVaccinations: Set<String>,
+    onSelectedVaccinationsChange: (Set<String>) -> Unit,
+    customVaccination: String,
+    onCustomVaccinationChange: (String) -> Unit,
+    selectedAllergies: Set<String>,
+    onSelectedAllergiesChange: (Set<String>) -> Unit,
+    customAllergy: String,
+    onCustomAllergyChange: (String) -> Unit,
     conditions: String,
     onConditionsChange: (String) -> Unit,
-    medications: String,
-    onMedicationsChange: (String) -> Unit
+    medications: List<MedicationEntry>,
+    onMedicationsChange: (List<MedicationEntry>) -> Unit,
+    onUpdateDraft: (String, String, String) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(true) }
+    
+    // Update draft whenever any medical info changes
+    LaunchedEffect(selectedVaccinations, customVaccination, selectedAllergies, customAllergy, medications) {
+        // Update vaccinations
+        var allVaccinations = selectedVaccinations.toMutableList()
+        if (customVaccination.trim().isNotEmpty()) {
+            allVaccinations.add(customVaccination.trim())
+        }
+        val vaccinationsString = allVaccinations.joinToString(", ")
+        
+        // Update allergies
+        var allAllergies = selectedAllergies.toMutableList()
+        if (customAllergy.trim().isNotEmpty()) {
+            allAllergies.add(customAllergy.trim())
+        }
+        val allergiesString = allAllergies.joinToString(", ")
+        
+        // Update medications
+        val validMeds = medications.filter { it.name.isNotEmpty() && it.dosage.isNotEmpty() }
+        val medicationsString = validMeds.joinToString(", ") { "${it.name}: ${it.dosage}" }
+        
+        onUpdateDraft(vaccinationsString, allergiesString, medicationsString)
+    }
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -397,53 +453,574 @@ private fun MedicalInfoStep(
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
         item {
-            SectionCard(title = "Medical Information") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PetTextField(
-                        icon = "💉",
-                        placeholder = "Vaccinations (comma separated)",
-                        value = vaccinations,
-                        onValueChange = onVaccinationsChange,
-                        singleLine = false
-                    )
-
-                    PetTextField(
-                        icon = "⚠️",
-                        placeholder = "Allergies (comma separated)",
-                        value = allergies,
-                        onValueChange = onAllergiesChange,
-                        singleLine = false
-                    )
-
-                    PetTextField(
-                        icon = "🏥",
-                        placeholder = "Conditions (comma separated)",
-                        value = conditions,
-                        onValueChange = onConditionsChange,
-                        singleLine = false
-                    )
-
-                    PetTextField(
-                        icon = "💊",
-                        placeholder = "Medications (name: dosage)",
-                        value = medications,
-                        onValueChange = onMedicationsChange,
-                        singleLine = false
-                    )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                border = BorderStroke(1.dp, VetStroke.copy(alpha = 0.3f))
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Header with expand/collapse
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { expanded = !expanded }
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Medical Info",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = VetCanyon
+                        )
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (expanded) "Collapse" else "Expand",
+                            tint = TextSecondary
+                        )
+                    }
+                    
+                    // Expandable content
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            // Vaccinations Section
+                            VaccinationsSection(
+                                species = species,
+                                selectedVaccinations = selectedVaccinations,
+                                onSelectedVaccinationsChange = onSelectedVaccinationsChange,
+                                customVaccination = customVaccination,
+                                onCustomVaccinationChange = onCustomVaccinationChange
+                            )
+                            
+                            // Allergies Section
+                            AllergiesSection(
+                                selectedAllergies = selectedAllergies,
+                                onSelectedAllergiesChange = onSelectedAllergiesChange,
+                                customAllergy = customAllergy,
+                                onCustomAllergyChange = onCustomAllergyChange
+                            )
+                            
+                            // Chronic Conditions
+                            PetTextField(
+                                icon = "🏥",
+                                placeholder = "Chronic conditions (comma-separated)",
+                                value = conditions,
+                                onValueChange = onConditionsChange,
+                                singleLine = false
+                            )
+                            
+                            // Medications Section
+                            MedicationsSection(
+                                medications = medications,
+                                onMedicationsChange = onMedicationsChange
+                            )
+                        }
+                    }
                 }
             }
         }
 
         item {
-            Text(
-                text = "Medical information is optional but helps provide better care for your pet.",
-                fontSize = 12.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Optional — you can fill this later",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextSecondary
+                )
+            }
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+// MARK: - Vaccinations Section
+@Composable
+private fun VaccinationsSection(
+    species: String,
+    selectedVaccinations: Set<String>,
+    onSelectedVaccinationsChange: (Set<String>) -> Unit,
+    customVaccination: String,
+    onCustomVaccinationChange: (String) -> Unit
+) {
+    val suggestedVaccinations = remember(species) {
+        when (species.lowercase()) {
+            "dog" -> listOf(
+                "Rabies",
+                "DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)",
+                "Bordetella",
+                "Leptospirosis",
+                "Lyme Disease",
+                "Canine Influenza"
+            )
+            "cat" -> listOf(
+                "Rabies",
+                "FVRCP (Feline Viral Rhinotracheitis, Calicivirus, Panleukopenia)",
+                "FeLV (Feline Leukemia)",
+                "FIP (Feline Infectious Peritonitis)"
+            )
+            "bird" -> listOf(
+                "Polyomavirus",
+                "Pacheco's Disease",
+                "Psittacosis"
+            )
+            else -> listOf("Rabies", "Core Vaccinations")
+        }
+    }
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "💉",
+                fontSize = 18.sp
+            )
+            Text(
+                text = "Vaccinations",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = VetCanyon
+            )
+        }
+        
+        // Suggested vaccinations with checkboxes
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = VetInputBackground,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(vertical = 8.dp, horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            suggestedVaccinations.forEach { vaccine ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val newSet = selectedVaccinations.toMutableSet()
+                            if (newSet.contains(vaccine)) {
+                                newSet.remove(vaccine)
+                            } else {
+                                newSet.add(vaccine)
+                            }
+                            onSelectedVaccinationsChange(newSet)
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(
+                                if (selectedVaccinations.contains(vaccine)) 
+                                    VetCanyon 
+                                else 
+                                    Color.Transparent,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .border(
+                                1.5.dp,
+                                if (selectedVaccinations.contains(vaccine)) 
+                                    VetCanyon 
+                                else 
+                                    TextSecondary,
+                                shape = RoundedCornerShape(4.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedVaccinations.contains(vaccine)) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = vaccine,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+        
+        // Custom vaccination input
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Or add custom:",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextSecondary
+            )
+        }
+        
+        PetTextField(
+            icon = "➕",
+            placeholder = "Add custom vaccination",
+            value = customVaccination,
+            onValueChange = onCustomVaccinationChange
+        )
+    }
+}
+
+// MARK: - Allergies Section
+@Composable
+private fun AllergiesSection(
+    selectedAllergies: Set<String>,
+    onSelectedAllergiesChange: (Set<String>) -> Unit,
+    customAllergy: String,
+    onCustomAllergyChange: (String) -> Unit
+) {
+    val commonAllergies = remember {
+        listOf("Chicken", "Beef", "Dairy", "Wheat", "Soy", "Eggs", "Fish", "Corn")
+    }
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "⚠️",
+                fontSize = 18.sp
+            )
+            Text(
+                text = "Allergies",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = VetCanyon
+            )
+        }
+        
+        // Suggested allergies with checkboxes
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = VetInputBackground,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(vertical = 8.dp, horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // "None" button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val newSet = mutableSetOf<String>()
+                        if (!selectedAllergies.contains("None")) {
+                            newSet.add("None")
+                        }
+                        onSelectedAllergiesChange(newSet)
+                    },
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            if (selectedAllergies.contains("None")) 
+                                VetCanyon 
+                            else 
+                                Color.Transparent,
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        .border(
+                            1.5.dp,
+                            if (selectedAllergies.contains("None")) 
+                                VetCanyon 
+                            else 
+                                TextSecondary,
+                            shape = RoundedCornerShape(4.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (selectedAllergies.contains("None")) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "None",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Divider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = VetStroke.copy(alpha = 0.5f)
+            )
+            
+            // Common allergies
+            commonAllergies.forEach { allergy ->
+                val isDisabled = selectedAllergies.contains("None")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isDisabled) {
+                            val newSet = selectedAllergies.toMutableSet()
+                            if (newSet.contains("None")) {
+                                newSet.remove("None")
+                            }
+                            if (newSet.contains(allergy)) {
+                                newSet.remove(allergy)
+                            } else {
+                                newSet.add(allergy)
+                            }
+                            onSelectedAllergiesChange(newSet)
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(
+                                if (selectedAllergies.contains(allergy)) 
+                                    VetCanyon 
+                                else 
+                                    Color.Transparent,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .border(
+                                1.5.dp,
+                                if (selectedAllergies.contains(allergy)) 
+                                    VetCanyon 
+                                else 
+                                    TextSecondary.copy(alpha = if (isDisabled) 0.5f else 1f),
+                                shape = RoundedCornerShape(4.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedAllergies.contains(allergy)) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = allergy,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isDisabled) 
+                            TextSecondary.copy(alpha = 0.5f) 
+                        else 
+                            TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+        
+        // Custom allergy input
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Or add custom:",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextSecondary
+            )
+        }
+        
+        PetTextField(
+            icon = "➕",
+            placeholder = "Add custom allergy",
+            value = customAllergy,
+            onValueChange = onCustomAllergyChange,
+            enabled = !selectedAllergies.contains("None")
+        )
+    }
+}
+
+// MARK: - Medications Section
+@Composable
+private fun MedicationsSection(
+    medications: List<MedicationEntry>,
+    onMedicationsChange: (List<MedicationEntry>) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "💊",
+                    fontSize = 18.sp
+                )
+                Text(
+                    text = "Current Medications",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = VetCanyon
+                )
+            }
+            
+            IconButton(
+                onClick = {
+                    onMedicationsChange(medications + MedicationEntry())
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add medication",
+                    tint = VetCanyon,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        
+        if (medications.isEmpty()) {
+            Text(
+                text = "No medications added. Tap + to add one.",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextSecondary,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                medications.forEachIndexed { index, medication ->
+                    MedicationEntryRow(
+                        medication = medication,
+                        onNameChange = { newName ->
+                            val updated = medications.toMutableList()
+                            updated[index] = medication.copy(name = newName)
+                            onMedicationsChange(updated)
+                        },
+                        onDosageChange = { newDosage ->
+                            val updated = medications.toMutableList()
+                            updated[index] = medication.copy(dosage = newDosage)
+                            onMedicationsChange(updated)
+                        },
+                        onDelete = {
+                            onMedicationsChange(medications.filterIndexed { i, _ -> i != index })
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Medication Entry Row
+@Composable
+private fun MedicationEntryRow(
+    medication: MedicationEntry,
+    onNameChange: (String) -> Unit,
+    onDosageChange: (String) -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = VetInputBackground),
+        border = BorderStroke(1.dp, VetStroke)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Medication ${medication.id.take(4)}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextSecondary
+                )
+                
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Delete medication",
+                        tint = ErrorRed,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+            
+            PetTextField(
+                icon = "💊",
+                placeholder = "Medication name",
+                value = medication.name,
+                onValueChange = onNameChange
+            )
+            
+            PetTextField(
+                icon = "⚖️",
+                placeholder = "Dosage (e.g., 500mg twice daily)",
+                value = medication.dosage,
+                onValueChange = onDosageChange
+            )
+        }
     }
 }
 
@@ -582,7 +1159,8 @@ private fun PetTextField(
     value: String,
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType = KeyboardType.Text,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = value,
@@ -592,17 +1170,21 @@ private fun PetTextField(
         modifier = Modifier.fillMaxWidth(),
         singleLine = singleLine,
         maxLines = if (singleLine) 1 else 3,
+        enabled = enabled,
         shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = VetCanyon,
             unfocusedBorderColor = VetStroke,
             focusedContainerColor = CardBackground,
-            unfocusedContainerColor = CardBackground
+            unfocusedContainerColor = CardBackground,
+            disabledBorderColor = VetStroke.copy(alpha = 0.5f),
+            disabledContainerColor = CardBackground.copy(alpha = 0.5f)
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType)
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PetDropdownField(
     title: String,
@@ -612,12 +1194,15 @@ private fun PetDropdownField(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
-            label = { Text(title) },
             readOnly = true,
+            label = { Text(title) },
             trailingIcon = {
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
@@ -626,7 +1211,7 @@ private fun PetDropdownField(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = true },
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = VetCanyon,
@@ -636,10 +1221,9 @@ private fun PetDropdownField(
             )
         )
 
-        DropdownMenu(
+        ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth(0.9f)
+            onDismissRequest = { expanded = false }
         ) {
             options.forEach { option ->
                 DropdownMenuItem(

@@ -50,9 +50,15 @@ fun PetSitterScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    // Ensure sitters are loaded
+    // Load sitters when screen is shown
     LaunchedEffect(Unit) {
-        if (sitters.isEmpty() && !isLoading) {
+        viewModel.loadSitters()
+    }
+    
+    // Refresh sitters when subscription becomes active
+    val subscriptionActivated by tn.rifq_android.util.SubscriptionManager.subscriptionActivated.collectAsState()
+    LaunchedEffect(subscriptionActivated) {
+        if (subscriptionActivated) {
             viewModel.loadSitters()
         }
     }
@@ -172,48 +178,56 @@ fun PetSitterScreen(
                 }
             }
 
-            // Recent Sitters Section (iOS Reference: PetSitterView.swift lines 77-94)
-            if (sitters.isNotEmpty()) {
-                item {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Recent Sitters",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
+            // Available Sitters Section - Show all subscribed sitters
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Available Sitters",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
 
-                        if (isLoading) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = VetCanyon)
-                            }
-                        } else if (error != null) {
-                            Text(
-                                text = "Error: $error",
-                                fontSize = 14.sp,
-                                color = ErrorRed,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        } else {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                // Show first 2-3 sitters as "Recent"
-                                sitters.take(3).forEach { sitter ->
-                                    SitterRow(
-                                        sitter = sitter,
-                                        onClick = {
-                                            navController.navigate("sitter_profile/${sitter.userId}")
-                                        }
-                                    )
-                                }
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = VetCanyon)
+                        }
+                    } else if (error != null) {
+                        Text(
+                            text = "Error: $error",
+                            fontSize = 14.sp,
+                            color = ErrorRed,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    } else if (sitters.isEmpty()) {
+                        Text(
+                            text = "No pet sitters available",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextSecondary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        )
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Show all available sitters
+                            sitters.forEach { sitter ->
+                                SitterRow(
+                                    sitter = sitter,
+                                    onClick = {
+                                        navController.navigate("sitter_profile/${sitter.userId}")
+                                    }
+                                )
                             }
                         }
                     }
@@ -251,10 +265,20 @@ private fun SitterRow(
                     .background(sitter.tint, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = sitter.emoji,
-                    fontSize = 22.sp
-                )
+                if (sitter.emoji.isNotEmpty()) {
+                    Text(
+                        text = sitter.emoji,
+                        fontSize = 22.sp
+                    )
+                } else {
+                    // Show first letter of name as fallback
+                    Text(
+                        text = sitter.name.take(1).uppercase(),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                }
             }
 
             // Info
@@ -269,26 +293,33 @@ private fun SitterRow(
                     color = TextPrimary
                 )
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(10.dp),
-                        tint = StarColor
-                    )
-                    Text(
-                        text = String.format("%.1f", sitter.rating),
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
-                    Text(
-                        text = "(0 reviews)", // TODO: Add reviews count when available
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
+                // Only show rating/reviews if available
+                if (sitter.rating > 0.0 || sitter.reviews > 0) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (sitter.rating > 0.0) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(10.dp),
+                                tint = StarColor
+                            )
+                            Text(
+                                text = String.format("%.1f", sitter.rating),
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                        }
+                        if (sitter.reviews > 0) {
+                            Text(
+                                text = "(${sitter.reviews} ${if (sitter.reviews == 1) "review" else "reviews"})",
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
                 }
             }
 

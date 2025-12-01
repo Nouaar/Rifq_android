@@ -62,9 +62,7 @@ fun EmbeddedMapView(
     
     // Load locations when map mode is shown
     LaunchedEffect(Unit) {
-        if (vetLocations.isEmpty() && sitterLocations.isEmpty()) {
-            viewModel.loadLocations()
-        }
+        viewModel.loadLocations()
     }
     
     // Refresh locations when subscription becomes active
@@ -72,6 +70,17 @@ fun EmbeddedMapView(
     LaunchedEffect(subscriptionActivated) {
         if (subscriptionActivated) {
             viewModel.refreshLocations()
+        }
+    }
+    
+    // Update markers whenever locations change
+    LaunchedEffect(allLocations) {
+        mapView?.let { mv ->
+            mv.mapboxMap.getStyle { style ->
+                addMarkers(mv, allLocations) { location ->
+                    selectedLocation = location
+                }
+            }
         }
     }
     
@@ -89,20 +98,14 @@ fun EmbeddedMapView(
                             .build()
                     )
                     mv.mapboxMap.loadStyle(Style.MAPBOX_STREETS) { style ->
+                        // Add markers once style is loaded
                         addMarkers(mv, allLocations) { location ->
                             selectedLocation = location
                         }
                     }
                 }
             },
-            modifier = Modifier.fillMaxSize(),
-            update = { mv ->
-                mv.mapboxMap.getStyle { style ->
-                    addMarkers(mv, allLocations) { location ->
-                        selectedLocation = location
-                    }
-                }
-            }
+            modifier = Modifier.fillMaxSize()
         )
         
         // Loading indicator
@@ -186,6 +189,8 @@ private fun addMarkers(
     locations: List<MapLocation>,
     onMarkerClick: (MapLocation) -> Unit
 ) {
+    android.util.Log.d("EmbeddedMapView", "Adding ${locations.size} markers to map")
+    
     val annotationApi = mapView.annotations
     val pointAnnotationManager = annotationApi.createPointAnnotationManager()
     pointAnnotationManager.deleteAll()
@@ -242,6 +247,8 @@ private fun addMarkers(
         location?.let { onMarkerClick(it) }
         true
     }
+    
+    android.util.Log.d("EmbeddedMapView", "Successfully added ${locations.size} markers")
 }
 
 @Composable
