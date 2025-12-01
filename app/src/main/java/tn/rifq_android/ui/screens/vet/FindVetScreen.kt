@@ -43,6 +43,14 @@ fun FindVetScreen(
     val vets by viewModel.vets.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    
+    // Refresh vets list when subscription becomes active
+    val subscriptionActivated by tn.rifq_android.util.SubscriptionManager.subscriptionActivated.collectAsState()
+    LaunchedEffect(subscriptionActivated) {
+        if (subscriptionActivated) {
+            viewModel.loadVets()
+        }
+    }
 
 
     var isVisible by remember { mutableStateOf(false) }

@@ -56,6 +56,14 @@ fun MapScreen(
     val allLocations = remember(vetLocations, sitterLocations) {
         vetLocations.map { MapLocation.Vet(it) } + sitterLocations.map { MapLocation.Sitter(it) }
     }
+    
+    // Refresh locations when subscription becomes active
+    val subscriptionActivated by tn.rifq_android.util.SubscriptionManager.subscriptionActivated.collectAsState()
+    LaunchedEffect(subscriptionActivated) {
+        if (subscriptionActivated) {
+            viewModel.refreshLocations()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
 

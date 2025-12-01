@@ -285,7 +285,7 @@ fun MainScreen(
                             navController = navController,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToChangeEmail = onNavigateToChangeEmail,
-                            onNavigateToJoin = { navController.navigate("join_team") },
+                            onNavigateToJoin = { navController.navigate("join_vet_sitter") },
                             onNavigateToSubscription = { navController.navigate("subscription_management") },
                             onLogout = onLogout
                         )
@@ -305,16 +305,18 @@ fun MainScreen(
             }
 
             composable("join_vet") {
-                tn.rifq_android.ui.screens.join.JoinPetSitterScreen(
+                tn.rifq_android.ui.screens.join.JoinVetScreen(
                     navController = navController,
-                    themePreference = themePreference
+                    themePreference = themePreference,
+                    fromSubscription = true // Always true when coming from subscription flow
                 )
             }
 
             composable("join_sitter") {
                 tn.rifq_android.ui.screens.join.JoinPetSitterScreen(
                     navController = navController,
-                    themePreference = themePreference
+                    themePreference = themePreference,
+                    fromSubscription = true // Always true when coming from subscription flow
                 )
             }
 

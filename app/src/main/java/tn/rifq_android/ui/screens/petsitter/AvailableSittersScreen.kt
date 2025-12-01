@@ -36,9 +36,18 @@ fun AvailableSittersScreen(
     val sitters by viewModel.sitters.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-
+    
+    // Refresh sitters list when subscription becomes active
+    val subscriptionActivated by tn.rifq_android.util.SubscriptionManager.subscriptionActivated.collectAsState()
+    
     LaunchedEffect(Unit) {
         viewModel.loadSitters()
+    }
+    
+    LaunchedEffect(subscriptionActivated) {
+        if (subscriptionActivated) {
+            viewModel.loadSitters()
+        }
     }
 
     Scaffold(
