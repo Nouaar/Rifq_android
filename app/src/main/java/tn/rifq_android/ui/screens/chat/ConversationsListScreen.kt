@@ -238,9 +238,11 @@ private fun ConversationRow(
         },
         enableDismissFromStartToEnd = false
     ) {
-        Surface(
-            onClick = onClick,
-            color = PageBackground
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(CardBackground)
+                .clickable(onClick = onClick)
         ) {
             Row(
                 modifier = Modifier

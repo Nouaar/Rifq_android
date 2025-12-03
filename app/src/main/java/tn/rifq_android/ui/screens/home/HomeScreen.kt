@@ -208,20 +208,24 @@ private fun HomeScreenContent(
         }
     }
 
-    Scaffold(
-        topBar = { 
-            TopNavBar(
-                title = "Home",
-                navController = navController,
-                showBackButton = false,
-                onMessagesClick = { navController.navigate("conversations") },
-                onNotificationsClick = { navController.navigate("notifications") },
-                messageCount = messageCount,
-                notificationCount = notificationCount
-            ) 
-        },
-        containerColor = PageBackground
-    ) { paddingValues ->
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Scaffold(
+            topBar = { 
+                TopNavBar(
+                    title = "Home",
+                    navController = navController,
+                    showBackButton = false,
+                    showMenuButton = true,
+                    onMessagesClick = { navController.navigate("conversations") },
+                    onNotificationsClick = { navController.navigate("notifications") },
+                    messageCount = messageCount,
+                    notificationCount = notificationCount
+                ) 
+            },
+            containerColor = PageBackground
+        ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -259,12 +263,36 @@ private fun HomeScreenContent(
                 )
             }
 
-            // Find Care Hub (iOS Reference: FindHubView.swift)
-            item {
-                FindCareButton(navController = navController)
-            }
-
             item { Spacer(modifier = Modifier.height(20.dp)) }
+        }
+        }
+        
+        // Floating AI Chat Button
+        FloatingActionButton(
+            onClick = { navController.navigate("chat_ai") },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 24.dp, end = 20.dp),
+            containerColor = OrangeAccent,
+            contentColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "AI Chat",
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "AI Chat",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

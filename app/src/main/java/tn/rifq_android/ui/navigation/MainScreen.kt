@@ -214,40 +214,17 @@ fun MainScreen(
         )
     }
 
-    // Tab bar visibility - hide on detail screens (iOS Reference: MainTabView.swift line 36)
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    val showBottomBar = remember(currentRoute) {
-        currentRoute in listOf("home", "discover", "chat_ai", "mypets", "profile")
-    }
+    // Navigation is now handled through top drawer menu instead of bottom bar
     
-    // Tab bar animation is implemented above
-    // Tab content transitions are handled by NavHost (fade by default)
-    // iOS Reference: MainTabView.swift lines 34-35, 51-52
-    
-    Scaffold(
-        containerColor = Color.Unspecified, // Unspecified allows paw print background to show through
-        bottomBar = {
-            // Tab bar show/hide animation (iOS Reference: MainTabView.swift lines 51-52)
-            AnimatedVisibility(
-                visible = showBottomBar,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(200)
-                ) + fadeIn(animationSpec = tween(200)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(200)
-                ) + fadeOut(animationSpec = tween(200))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.Unspecified // Unspecified allows paw print background to show through
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = "home", // Match iOS default tab
+                modifier = Modifier.padding(innerPadding)
             ) {
-                BottomNavBar(navController = navController)
-            }
-        }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = "home", // Match iOS default tab
-            modifier = Modifier.padding(innerPadding)
-        ) {
             // iOS tab: Home
             composable("home") {
                 HomeScreen(
@@ -530,7 +507,8 @@ fun MainScreen(
                 val bookingVm: tn.rifq_android.viewmodel.booking.BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
                 tn.rifq_android.ui.screens.booking.BookingListScreen(
                     viewModel = bookingVm,
-                    onBookingSelected = { booking -> navController.navigate("booking_detail/${booking.id}") }
+                    onBookingSelected = { booking -> navController.navigate("booking_detail/${booking.id}") },
+                    navController = navController
                 )
             }
 
@@ -626,6 +604,22 @@ fun MainScreen(
                 )
             }
         }
+        }
+        
+        // Sidebar drawer overlay with user info
+        val userName = if (profileUiState is ProfileUiState.Success) {
+            (profileUiState as ProfileUiState.Success).user.name
+        } else null
+        
+        val userImage = if (profileUiState is ProfileUiState.Success) {
+            (profileUiState as ProfileUiState.Success).user.profileImage
+        } else null
+        
+        tn.rifq_android.ui.components.NavigationDrawerOverlay(
+            navController = navController,
+            userName = userName,
+            userImage = userImage
+        )
     }
 }
 

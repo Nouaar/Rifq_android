@@ -25,7 +25,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import tn.rifq_android.data.model.booking.Booking
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 import tn.rifq_android.viewmodel.booking.BookingViewModel
 import java.text.SimpleDateFormat
@@ -40,11 +43,26 @@ import java.util.*
 fun BookingListScreen(
     viewModel: BookingViewModel,
     onBookingSelected: (Booking) -> Unit,
+    navController: NavHostController? = null,
     role: String? = null
 ) {
     val bookings by viewModel.bookings.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
+
+    // Notification badge manager
+    val badgeViewModel: tn.rifq_android.util.NotificationBadgeViewModel = viewModel()
+    val notificationCount by badgeViewModel.notificationCount.collectAsState()
+    val messageCount by badgeViewModel.messageCount.collectAsState()
+    
+    // Refresh badge counts periodically
+    LaunchedEffect(Unit) {
+        badgeViewModel.refresh()
+        while (true) {
+            kotlinx.coroutines.delay(30000)
+            badgeViewModel.refresh()
+        }
+    }
 
     // Tab state
     var selectedTab by remember { mutableStateOf(0) }
@@ -75,17 +93,15 @@ fun BookingListScreen(
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            "My Bookings",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        ) 
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = CardBackground
-                    )
+                TopNavBar(
+                    title = "My Bookings",
+                    navController = navController,
+                    showBackButton = false,
+                    showMenuButton = true,
+                    onMessagesClick = { navController?.navigate("conversations") },
+                    onNotificationsClick = { navController?.navigate("notifications") },
+                    messageCount = messageCount,
+                    notificationCount = notificationCount
                 )
                 
                 // Tabs

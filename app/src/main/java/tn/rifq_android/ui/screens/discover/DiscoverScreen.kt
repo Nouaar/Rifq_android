@@ -35,6 +35,20 @@ fun DiscoverScreen(
     navController: NavHostController,
     themePreference: tn.rifq_android.data.storage.ThemePreference
 ) {
+    // Notification badge manager
+    val badgeViewModel: tn.rifq_android.util.NotificationBadgeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val notificationCount by badgeViewModel.notificationCount.collectAsState()
+    val messageCount by badgeViewModel.messageCount.collectAsState()
+    
+    // Refresh badge counts periodically
+    LaunchedEffect(Unit) {
+        badgeViewModel.refresh()
+        while (true) {
+            kotlinx.coroutines.delay(30000)
+            badgeViewModel.refresh()
+        }
+    }
+    
     var selectedMode by remember { mutableStateOf(DiscoverMode.FIND_CARE) }
 
     Scaffold(
@@ -42,6 +56,12 @@ fun DiscoverScreen(
             TopNavBar(
                 title = "Discover",
                 navController = navController,
+                showBackButton = false,
+                showMenuButton = true,
+                onMessagesClick = { navController.navigate("conversations") },
+                onNotificationsClick = { navController.navigate("notifications") },
+                messageCount = messageCount,
+                notificationCount = notificationCount
             )
         },
         containerColor = PageBackground
