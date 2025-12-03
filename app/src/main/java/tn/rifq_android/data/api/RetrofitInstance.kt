@@ -22,6 +22,11 @@ object RetrofitInstance {
     private const val BASE_URL = "https://rifq.onrender.com/"
 
     private var tokenManager: TokenManager? = null
+    
+    // Track ongoing refresh to prevent concurrent refresh attempts
+    @Volatile
+    private var isRefreshing = false
+    private val refreshLock = Any()
 
     fun initialize(context: Context) {
         tokenManager = TokenManager(context.applicationContext)
@@ -77,6 +82,7 @@ object RetrofitInstance {
 
 
     private val tokenAuthenticator = Authenticator { route: Route?, response: Response ->
+        // Prevent infinite retry loops
         if (responseCount(response) >= 2) {
             runBlocking { tokenManager?.clearTokens() }
             return@Authenticator null
@@ -84,41 +90,80 @@ object RetrofitInstance {
 
         val manager = tokenManager ?: return@Authenticator null
 
-        val refreshToken = runBlocking { manager.getRefreshToken().firstOrNull() }
-        if (refreshToken.isNullOrEmpty()) {
-            runBlocking { manager.clearTokens() }
-            return@Authenticator null
+        // Use synchronized block to prevent concurrent refresh attempts
+        synchronized(refreshLock) {
+            // Check if another thread already refreshed the token
+            val currentToken = runBlocking { manager.getAccessToken().firstOrNull() }
+            val originalToken = response.request.header("Authorization")?.removePrefix("Bearer ")
+            
+            // If token has changed since the failed request, retry with new token
+            if (currentToken != null && currentToken != originalToken) {
+                return@Authenticator response.request.newBuilder()
+                    .header("Authorization", "Bearer $currentToken")
+                    .build()
+            }
+            
+            // If already refreshing, wait and retry with new token
+            if (isRefreshing) {
+                // Wait a bit for ongoing refresh to complete
+                Thread.sleep(1000)
+                val newToken = runBlocking { manager.getAccessToken().firstOrNull() }
+                return@Authenticator if (newToken != null && newToken != originalToken) {
+                    response.request.newBuilder()
+                        .header("Authorization", "Bearer $newToken")
+                        .build()
+                } else {
+                    null
+                }
+            }
+            
+            isRefreshing = true
         }
 
-        // Call refresh endpoint
-        val refreshResponse = try {
-            runBlocking { refreshApi.refresh(RefreshRequest(refreshToken)) }
-        } catch (e: Exception) {
-            // Network error or server issue - don't clear tokens, might be temporary
-            return@Authenticator null
+        try {
+            val refreshToken = runBlocking { manager.getRefreshToken().firstOrNull() }
+            if (refreshToken.isNullOrEmpty()) {
+                runBlocking { manager.clearTokens() }
+                return@Authenticator null
+            }
+
+            // Call refresh endpoint
+            val refreshResponse = try {
+                runBlocking { refreshApi.refresh(RefreshRequest(refreshToken)) }
+            } catch (e: Exception) {
+                // Network error or server issue - don't clear tokens, might be temporary
+                return@Authenticator null
+            } finally {
+                synchronized(refreshLock) {
+                    isRefreshing = false
+                }
+            }
+
+            if (refreshResponse == null || !refreshResponse.isSuccessful) {
+                // Refresh failed - tokens are invalid, clear them
+                runBlocking { manager.clearTokens() }
+                return@Authenticator null
+            }
+
+            val tokens = refreshResponse.body()?.tokens
+            if (tokens == null) {
+                runBlocking { manager.clearTokens() }
+                return@Authenticator null
+            }
+
+            // Persist new tokens
+            runBlocking { manager.saveTokens(tokens.accessToken, tokens.refreshToken) }
+
+            // Retry the original request with new access token
+            response.request.newBuilder()
+                .header("Authorization", "Bearer ${tokens.accessToken}")
+                .build()
+                
+        } finally {
+            synchronized(refreshLock) {
+                isRefreshing = false
+            }
         }
-
-        if (refreshResponse == null || !refreshResponse.isSuccessful) {
-            // Refresh failed - tokens are invalid, clear them
-            runBlocking { manager.clearTokens() }
-            return@Authenticator null
-        }
-
-        val tokens = refreshResponse.body()?.tokens
-        if (tokens == null) {
-            runBlocking { manager.clearTokens() }
-            return@Authenticator null
-        }
-
-        // Persist new tokens
-        runBlocking { manager.saveTokens(tokens.accessToken, tokens.refreshToken) }
-
-        // Retry the original request with new access token
-        val newAccess = tokens.accessToken
-        val newRequest: Request = response.request.newBuilder()
-            .header("Authorization", "Bearer $newAccess")
-            .build()
-        newRequest
     }
 
     private fun responseCount(response: Response): Int {

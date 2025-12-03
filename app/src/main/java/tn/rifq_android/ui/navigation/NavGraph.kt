@@ -14,6 +14,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import tn.rifq_android.data.storage.ThemePreference
 import tn.rifq_android.data.storage.TokenManager
+import tn.rifq_android.data.session.SessionManager
 import tn.rifq_android.ui.components.SplashScreen
 import tn.rifq_android.ui.screens.auth.LoginScreen
 import tn.rifq_android.ui.screens.auth.RegisterScreen
@@ -49,7 +50,7 @@ fun AppNavGraph(
     val navController = rememberNavController()
     val factory = AuthViewModelFactory(context)
     val authViewModel: AuthViewModel = viewModel(factory = factory)
-    val tokenManager = remember { TokenManager(context) }
+    val sessionManager = remember { SessionManager.getInstance(context) }
 
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -57,9 +58,9 @@ fun AppNavGraph(
         //splash screen duration
         kotlinx.coroutines.delay(4500)
 
-        // Check if we have valid tokens
-        val hasToken = tokenManager.hasValidToken()
-        startDestination = if (hasToken) {
+        // Restore session - this will automatically refresh tokens if needed
+        val isAuthenticated = sessionManager.restoreSession()
+        startDestination = if (isAuthenticated) {
             Routes.MAIN
         } else {
             Routes.LOGIN

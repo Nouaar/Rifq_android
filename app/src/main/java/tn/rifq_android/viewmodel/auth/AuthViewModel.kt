@@ -1,5 +1,6 @@
 package tn.rifq_android.viewmodel.auth
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,6 +9,7 @@ import kotlinx.coroutines.launch
 import tn.rifq_android.data.repository.AuthRepository
 import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.data.storage.UserManager
+import tn.rifq_android.data.session.SessionManager
 import tn.rifq_android.data.model.auth.LoginRequest
 import tn.rifq_android.data.model.auth.RegisterRequest
 import tn.rifq_android.data.model.auth.VerifyEmailRequest
@@ -23,11 +25,14 @@ sealed class AuthUiState {
 class AuthViewModel(
     private val repository: AuthRepository,
     private val tokenManager: TokenManager,
-    private val userManager: UserManager
+    private val userManager: UserManager,
+    private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
+    
+    private val sessionManager = SessionManager.getInstance(context)
 
     fun register(email: String, password: String, name: String, role: String) {
         val validation = ValidationUtil.validateRegistrationInput(email, password, name, role)
@@ -125,8 +130,7 @@ class AuthViewModel(
     fun logout() {
         viewModelScope.launch {
             try {
-                tokenManager.clearTokens()
-                userManager.clearUserId()
+                sessionManager.clearSession()
                 _uiState.value = AuthUiState.Success("Logged out successfully.")
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error("Failed to logout.")
@@ -222,8 +226,7 @@ class AuthViewModel(
                 )
                 if (response.isSuccessful) {
                     // Clear tokens since backend invalidates them
-                    tokenManager.clearTokens()
-                    userManager.clearUserId()
+                    sessionManager.clearSession()
                     _uiState.value = AuthUiState.Success(
                         response.body()?.message ?: "Password changed! Please login again."
                     )
@@ -284,8 +287,7 @@ class AuthViewModel(
                 )
                 if (response.isSuccessful) {
                     // Clear tokens since backend invalidates them
-                    tokenManager.clearTokens()
-                    userManager.clearUserId()
+                    sessionManager.clearSession()
                     _uiState.value = AuthUiState.Success(
                         response.body()?.message ?: "Email changed! Please login with new email."
                     )
@@ -316,6 +318,7 @@ class AuthViewModel(
                         )
                         val userId = body.user.id ?: body.user.email
                         userManager.saveUserId(userId)
+                        sessionManager.setAuthenticated(true)
                         _uiState.value = AuthUiState.Success("Login successful!")
                     } else {
                         _uiState.value = AuthUiState.Error("Invalid server response.")

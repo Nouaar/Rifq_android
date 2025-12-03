@@ -14,6 +14,7 @@ import tn.rifq_android.data.model.auth.ResendVerificationRequest
 import tn.rifq_android.data.model.auth.MessageResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import tn.rifq_android.data.model.auth.GoogleSignInRequest
@@ -56,4 +57,8 @@ interface AuthApi {
     // Google Sign-In
     @POST("auth/google")
     suspend fun googleSignIn(@Body request: GoogleSignInRequest): Response<AuthResponse>
+    
+    // Get current user profile
+    @GET("auth/me")
+    suspend fun getMe(): Response<tn.rifq_android.data.model.auth.User>
 }

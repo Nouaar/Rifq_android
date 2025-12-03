@@ -16,7 +16,7 @@ class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Fac
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
-            return AuthViewModel(repository, tokenManager, userManager) as T
+            return AuthViewModel(repository, tokenManager, userManager, context.applicationContext) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
