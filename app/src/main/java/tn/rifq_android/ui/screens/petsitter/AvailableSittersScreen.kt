@@ -36,9 +36,18 @@ fun AvailableSittersScreen(
     val sitters by viewModel.sitters.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-
+    
+    // Refresh sitters list when subscription becomes active
+    val subscriptionActivated by tn.rifq_android.util.SubscriptionManager.subscriptionActivated.collectAsState()
+    
     LaunchedEffect(Unit) {
         viewModel.loadSitters()
+    }
+    
+    LaunchedEffect(subscriptionActivated) {
+        if (subscriptionActivated) {
+            viewModel.loadSitters()
+        }
     }
 
     Scaffold(
@@ -150,10 +159,20 @@ private fun SitterCardView(
                         .background(sitter.tint, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = sitter.emoji,
-                        fontSize = 22.sp
-                    )
+                    if (sitter.emoji.isNotEmpty()) {
+                        Text(
+                            text = sitter.emoji,
+                            fontSize = 22.sp
+                        )
+                    } else {
+                        // Show first letter of name as fallback
+                        Text(
+                            text = sitter.name.take(1).uppercase(),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
                 }
 
                 // Info
@@ -168,41 +187,47 @@ private fun SitterCardView(
                         color = TextPrimary
                     )
 
-                    Text(
-                        text = sitter.service,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
+                    if (sitter.service.isNotEmpty()) {
+                        Text(
+                            text = sitter.service,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextSecondary
+                        )
+                    }
 
-                    Text(
-                        text = sitter.description,
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        maxLines = 2
-                    )
+                    if (sitter.description.isNotEmpty()) {
+                        Text(
+                            text = sitter.description,
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            maxLines = 2
+                        )
+                    }
                 }
 
-                // Rating badge
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .background(Color(0xFF4CAF50).copy(alpha = 0.12f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(10.dp),
-                        tint = Color(0xFF4CAF50)
-                    )
-                    Text(
-                        text = String.format("%.1f", sitter.rating),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50)
-                    )
+                // Rating badge - only show if rating exists
+                if (sitter.rating > 0.0) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(Color(0xFF4CAF50).copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                            tint = Color(0xFF4CAF50)
+                        )
+                        Text(
+                            text = String.format("%.1f", sitter.rating),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CAF50)
+                        )
+                    }
                 }
             }
 

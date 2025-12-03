@@ -19,10 +19,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
+import tn.rifq_android.util.SubscriptionManager
+import tn.rifq_android.viewmodel.map.MapViewModel
 import tn.rifq_android.viewmodel.subscription.SubscriptionUiState
 import tn.rifq_android.viewmodel.subscription.SubscriptionViewModel
 import tn.rifq_android.viewmodel.subscription.SubscriptionViewModelFactory
@@ -43,14 +47,46 @@ fun EmailVerificationScreen(
     viewModel: SubscriptionViewModel = viewModel(factory = SubscriptionViewModelFactory())
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var code by remember { mutableStateOf("") }
     var showSuccessDialog by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     
-    // Handle success - show success dialog then navigate
+    // Map ViewModel for refreshing locations after subscription activation
+    val mapViewModel: MapViewModel = viewModel()
+    
+    // Listen for subscription activation to refresh discover list/map
+    val subscriptionActivated by SubscriptionManager.subscriptionActivated.collectAsState()
+    LaunchedEffect(subscriptionActivated) {
+        if (subscriptionActivated) {
+            // Refresh map locations so new user appears in discover list/map
+            mapViewModel.refreshLocations()
+            // Also refresh subscription status
+            SubscriptionManager.checkSubscriptionStatus()
+        }
+    }
+    
+    // Handle success - show success dialog then navigate (for verification)
+    // Also handle resend success messages
     LaunchedEffect(uiState) {
-        if (uiState is SubscriptionUiState.Success) {
-            showSuccessDialog = true
+        when (uiState) {
+            is SubscriptionUiState.Success -> {
+                val message = (uiState as SubscriptionUiState.Success).message
+                if (message?.contains("verified", ignoreCase = true) == true || 
+                    message?.contains("activated", ignoreCase = true) == true) {
+                    // This is verification success - show dialog and navigate
+                    showSuccessDialog = true
+                } else {
+                    // This is resend success - show toast
+                    android.widget.Toast.makeText(
+                        context,
+                        message ?: "Verification code sent to your email",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    viewModel.resetUiState()
+                }
+            }
+            else -> {}
         }
     }
     
@@ -92,6 +128,10 @@ fun EmailVerificationScreen(
                     onClick = {
                         showSuccessDialog = false
                         viewModel.resetUiState()
+                        // Refresh subscription status to trigger discover list/map refresh
+                        coroutineScope.launch {
+                            SubscriptionManager.checkSubscriptionStatus()
+                        }
                         // Navigate to home and clear back stack
                         navController.navigate("home") {
                             popUpTo("email_verification") { inclusive = true }
@@ -251,12 +291,12 @@ fun EmailVerificationScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Resend link (placeholder)
+            // Resend link
             TextButton(
                 onClick = {
-                    // TODO: Implement resend verification email
-                    // This would require a backend endpoint
-                }
+                    viewModel.resendVerificationCode()
+                },
+                enabled = uiState !is SubscriptionUiState.Loading
             ) {
                 Text(
                     text = "Didn't receive the code? Resend",

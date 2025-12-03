@@ -8,6 +8,9 @@ import tn.rifq_android.data.model.auth.User as AuthUser
 
 interface UserApi {
 
+    @GET("users")
+    suspend fun getAllUsers(): List<tn.rifq_android.data.model.auth.AppUser>
+
     @GET("users/profile")
     suspend fun getProfile(): Response<AuthUser>
 

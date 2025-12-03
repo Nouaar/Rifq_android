@@ -7,9 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -27,7 +24,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import tn.rifq_android.ui.components.MapPickerSheet
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 
@@ -46,8 +45,24 @@ enum class SitterService(val title: String) {
 @Composable
 fun JoinPetSitterScreen(
     navController: NavHostController,
-    themePreference: tn.rifq_android.data.storage.ThemePreference
+    themePreference: tn.rifq_android.data.storage.ThemePreference,
+    fromSubscription: Boolean = false
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val tokenManager = remember { tn.rifq_android.data.storage.TokenManager(context) }
+    
+    val viewModel: tn.rifq_android.viewmodel.vetsitter.JoinVetSitterViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return tn.rifq_android.viewmodel.vetsitter.JoinVetSitterViewModel(tokenManager) as T
+            }
+        }
+    )
+    
+    val uiState by viewModel.uiState.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val isLoggedIn = currentUser != null
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -64,6 +79,11 @@ fun JoinPetSitterScreen(
 
     var showPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
+    
+    // Map picker state
+    var showMapPicker by remember { mutableStateOf(false) }
+    var selectedLatitude by remember { mutableStateOf<Double?>(null) }
+    var selectedLongitude by remember { mutableStateOf<Double?>(null) }
 
 
     val isNameValid = fullName.trim().length >= 2
@@ -77,7 +97,34 @@ fun JoinPetSitterScreen(
     val isConfirmValid = confirmPassword.isNotEmpty() && confirmPassword == password
 
     val canSubmit = isNameValid && isEmailValid && isPhoneValid && isAddressValid &&
-            isYearsValid && isRateValid && hasServices && isPasswordValid && isConfirmValid
+            isYearsValid && isRateValid && hasServices &&
+            (isLoggedIn || (isPasswordValid && isConfirmValid))
+    
+    // Pre-fill form if user is logged in
+    LaunchedEffect(currentUser) {
+        val user = currentUser
+        if (user != null && fullName.isEmpty()) {
+            fullName = user.name ?: ""
+            email = user.email
+            phone = user.phone ?: ""
+        }
+    }
+    
+    // Handle form submission success
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Success -> {
+                val successState = uiState as tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Success
+                if (successState.requiresVerification) {
+                    // Navigate to email verification
+                    navController.navigate("email_verification") {
+                        popUpTo("join_sitter") { inclusive = true }
+                    }
+                }
+            }
+            else -> {}
+        }
+    }
 
 
     var isVisible by remember { mutableStateOf(false) }
@@ -170,14 +217,81 @@ fun JoinPetSitterScreen(
                         isTouched = phone.isNotEmpty()
                     )
 
-                    InputField(
-                        icon = Icons.Default.LocationOn,
-                        value = address,
-                        onValueChange = { address = it },
-                        placeholder = "Address / City",
-                        isValid = isAddressValid,
-                        isTouched = address.isNotEmpty()
-                    )
+                    // Address with map picker button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = address,
+                            onValueChange = { address = it },
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            placeholder = {
+                                Text(
+                                    text = "Address / City",
+                                    fontSize = 14.sp,
+                                    color = TextSecondary
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            trailingIcon = {
+                                if (address.isNotEmpty() && isAddressValid) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = CardBackground,
+                                unfocusedContainerColor = CardBackground,
+                                focusedBorderColor = if (address.isNotEmpty() && !isAddressValid) Color(0xFFF59E0B) else VetCanyon,
+                                unfocusedBorderColor = VetStroke,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = VetCanyon
+                            )
+                        )
+                        Button(
+                            onClick = { showMapPicker = true },
+                            modifier = Modifier.height(52.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CardBackground
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, VetStroke)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Set on map",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -218,26 +332,38 @@ fun JoinPetSitterScreen(
             }
 
             item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(SitterService.values().toList()) { service ->
-                        ServiceChip(
-                            service = service,
-                            isSelected = selectedServices.contains(service),
-                            onClick = {
-                                selectedServices = if (selectedServices.contains(service)) {
-                                    selectedServices - service
-                                } else {
-                                    selectedServices + service
-                                }
+                    val services = SitterService.values().toList()
+                    // Create rows of 2 items each
+                    services.chunked(2).forEach { rowServices ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            rowServices.forEach { service ->
+                                ServiceChip(
+                                    service = service,
+                                    isSelected = selectedServices.contains(service),
+                                    onClick = {
+                                        selectedServices = if (selectedServices.contains(service)) {
+                                            selectedServices - service
+                                        } else {
+                                            selectedServices + service
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
-                        )
+                            // Add spacer if odd number of items
+                            if (rowServices.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
@@ -309,52 +435,129 @@ fun JoinPetSitterScreen(
                 )
             }
 
-            item {
-                SectionTitle("PASSWORD")
+            // Password fields (only for new registrations)
+            if (!isLoggedIn) {
+                item {
+                    SectionTitle("ACCOUNT SECURITY")
+                }
+
+                item {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        PasswordField(
+                            icon = Icons.Default.Lock,
+                            value = password,
+                            onValueChange = { password = it },
+                            placeholder = "Password",
+                            showPassword = showPassword,
+                            onToggleVisibility = { showPassword = !showPassword },
+                            isValid = isPasswordValid,
+                            isTouched = password.isNotEmpty()
+                        )
+
+                        PasswordField(
+                            icon = Icons.Default.CheckCircle,
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            placeholder = "Confirm Password",
+                            showPassword = showConfirmPassword,
+                            onToggleVisibility = { showConfirmPassword = !showConfirmPassword },
+                            isValid = isConfirmValid,
+                            isTouched = confirmPassword.isNotEmpty()
+                        )
+                    }
+                }
             }
-
-            item {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    PasswordField(
-                        icon = Icons.Default.Lock,
-                        value = password,
-                        onValueChange = { password = it },
-                        placeholder = "Password",
-                        showPassword = showPassword,
-                        onToggleVisibility = { showPassword = !showPassword },
-                        isValid = isPasswordValid,
-                        isTouched = password.isNotEmpty()
-                    )
-
-                    PasswordField(
-                        icon = Icons.Default.CheckCircle,
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
-                        placeholder = "Confirm Password",
-                        showPassword = showConfirmPassword,
-                        onToggleVisibility = { showConfirmPassword = !showConfirmPassword },
-                        isValid = isConfirmValid,
-                        isTouched = confirmPassword.isNotEmpty()
-                    )
+            
+            // Error message
+            if (uiState is tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Error) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Red.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Text(
+                            text = (uiState as tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Error).message,
+                            color = Color.Red,
+                            modifier = Modifier.padding(12.dp),
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
 
 
             item {
                 Button(
-                    onClick = { /* TODO: Implement submit */ },
+                    onClick = {
+                        val servicesList = selectedServices.map { it.name.lowercase() }
+                        val rate = hourlyRate.toDoubleOrNull() ?: 0.0
+                        val years = yearsOfExperience.toIntOrNull()
+                        
+                        viewModel.submitSitter(
+                            fullName = fullName,
+                            email = email,
+                            phoneNumber = phone.ifEmpty { null },
+                            hourlyRate = rate,
+                            sitterAddress = address,
+                            services = servicesList,
+                            yearsOfExperience = years,
+                            availableWeekends = availableWeekends,
+                            canHostPets = canHostPets,
+                            availability = null, // TODO: Add availability calendar
+                            latitude = selectedLatitude,
+                            longitude = selectedLongitude,
+                            bio = bio.ifEmpty { null },
+                            password = if (isLoggedIn) null else password
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    enabled = canSubmit
+                    enabled = canSubmit && uiState !is tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Loading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canSubmit && uiState !is tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Loading) VetCanyon else VetCanyon.copy(alpha = 0.4f)
+                    )
                 ) {
-                    Text("Submit")
+                    if (uiState is tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Loading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Text(
+                            text = if (isLoggedIn) "CONVERT TO PET SITTER" else "CREATE SITTER ACCOUNT",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
+    }
+    
+    // Map picker sheet
+    if (showMapPicker) {
+        MapPickerSheet(
+            initialCoordinate = Pair(
+                selectedLongitude ?: 10.1815,
+                selectedLatitude ?: 36.8065
+            ),
+            onConfirm = { coordinate, addressText ->
+                selectedLongitude = coordinate.first
+                selectedLatitude = coordinate.second
+                if (addressText != null) {
+                    address = addressText
+                }
+            },
+            onDismiss = { showMapPicker = false }
+        )
     }
 }
 
@@ -501,10 +704,11 @@ private fun PasswordField(
 private fun ServiceChip(
     service: SitterService,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),

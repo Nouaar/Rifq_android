@@ -54,6 +54,7 @@ fun JoinWithSubscriptionScreen(
     var selectedRole by remember { mutableStateOf<String?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showPaymentProcessing by remember { mutableStateOf(false) }
+    var showPaymentScreen by remember { mutableStateOf(false) }
     
     val uiState by viewModel.uiState.collectAsState()
     
@@ -66,9 +67,12 @@ fun JoinWithSubscriptionScreen(
                     clientSecret = state.clientSecret,
                     onSuccess = {
                         showPaymentProcessing = false
-                        // Payment successful, navigate to email verification
-                        navController.navigate("email_verification") {
-                            popUpTo("join_vet_sitter") { inclusive = true }
+                        // Payment successful, navigate to form screen to fill details
+                        if (selectedRole != null) {
+                            val route = if (selectedRole == "vet") "join_vet" else "join_sitter"
+                            navController.navigate(route) {
+                                popUpTo("join_vet_sitter") { inclusive = true }
+                            }
                         }
                         viewModel.resetUiState()
                     },
@@ -79,9 +83,12 @@ fun JoinWithSubscriptionScreen(
                 )
             }
             is SubscriptionUiState.Success -> {
-                // Direct success (no payment required), navigate to email verification
-                navController.navigate("email_verification") {
-                    popUpTo("join_vet_sitter") { inclusive = true }
+                // Direct success (no payment required), navigate to form screen
+                if (selectedRole != null) {
+                    val route = if (selectedRole == "vet") "join_vet" else "join_sitter"
+                    navController.navigate(route) {
+                        popUpTo("join_vet_sitter") { inclusive = true }
+                    }
                 }
                 viewModel.resetUiState()
             }
@@ -149,18 +156,14 @@ fun JoinWithSubscriptionScreen(
         },
         containerColor = PageBackground
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
                 // Header
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -329,7 +332,7 @@ fun JoinWithSubscriptionScreen(
                 Button(
                     onClick = {
                         if (selectedRole != null) {
-                            showConfirmDialog = true
+                            showPaymentScreen = true
                         }
                     },
                     modifier = Modifier
@@ -357,7 +360,23 @@ fun JoinWithSubscriptionScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
             }
-        }
+    }
+    
+    // Payment Screen as Popup
+    if (showPaymentScreen) {
+        PaymentScreen(
+            amount = "$${SubscriptionViewModel.SUBSCRIPTION_PRICE}/month",
+            onPaymentComplete = {
+                showPaymentScreen = false
+                // After payment screen, proceed with subscription creation
+                if (selectedRole != null) {
+                    viewModel.createSubscription(selectedRole!!)
+                }
+            },
+            onDismiss = {
+                showPaymentScreen = false
+            }
+        )
     }
 }
 

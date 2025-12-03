@@ -32,6 +32,7 @@ import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 import tn.rifq_android.viewmodel.profile.ProfileUiState
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -255,16 +256,30 @@ private fun CalendarSection(
     var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     
+    // Reload trigger to refresh events when screen becomes visible
+    var reloadTrigger by remember { mutableStateOf(0) }
+    
+    // Reload when screen becomes visible (after navigation back from calendar)
+    LaunchedEffect(Unit) {
+        // Small delay to ensure calendar is ready
+        kotlinx.coroutines.delay(200)
+        reloadTrigger++
+    }
+    
     // Load events for all pets coming this week
-    LaunchedEffect(pets.map { it.id }) {
+    LaunchedEffect(pets.map { it.id }.joinToString(), reloadTrigger) {
         if (calendarManager.hasCalendarPermission() && pets.isNotEmpty()) {
             isLoading = true
             try {
                 val now = System.currentTimeMillis()
                 val calendar = Calendar.getInstance()
                 calendar.timeInMillis = now
+                
                 // Set to start of week (Monday)
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                // First, get the current day of week (1=Sunday, 2=Monday, etc.)
+                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                val daysFromMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
+                calendar.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
                 calendar.set(Calendar.HOUR_OF_DAY, 0)
                 calendar.set(Calendar.MINUTE, 0)
                 calendar.set(Calendar.SECOND, 0)
@@ -272,30 +287,45 @@ private fun CalendarSection(
                 val weekStart = calendar.timeInMillis
                 
                 // Set to end of week (Sunday 23:59:59)
-                calendar.add(Calendar.DAY_OF_WEEK, 6)
+                calendar.add(Calendar.DAY_OF_MONTH, 6)
                 calendar.set(Calendar.HOUR_OF_DAY, 23)
                 calendar.set(Calendar.MINUTE, 59)
                 calendar.set(Calendar.SECOND, 59)
+                calendar.set(Calendar.MILLISECOND, 999)
                 val weekEnd = calendar.timeInMillis
+                
+                android.util.Log.d("MyPetsScreen", "Week range: ${SimpleDateFormat("MMM dd, yyyy", Locale.US).format(Date(weekStart))} to ${SimpleDateFormat("MMM dd, yyyy", Locale.US).format(Date(weekEnd))}")
                 
                 // Load events for all pets
                 val allEvents = mutableListOf<CalendarEvent>()
                 pets.forEach { pet ->
                     pet.id?.let { petId ->
                         val petEvents = calendarManager.loadEventsForPet(petId)
+                        android.util.Log.d("MyPetsScreen", "Loaded ${petEvents.size} events for pet $petId")
                         allEvents.addAll(petEvents)
                     }
                 }
                 
+                android.util.Log.d("MyPetsScreen", "Total events loaded: ${allEvents.size}")
+                
                 // Filter to this week only
-                events = allEvents.filter { 
+                val weekEvents = allEvents.filter { 
                     it.startTime >= weekStart && it.startTime <= weekEnd 
-                }.sortedBy { it.startTime }
+                }
+                
+                android.util.Log.d("MyPetsScreen", "Events this week: ${weekEvents.size}")
+                weekEvents.forEach { event ->
+                    android.util.Log.d("MyPetsScreen", "Event: ${event.title} at ${SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.US).format(Date(event.startTime))}")
+                }
+                
+                events = weekEvents.sortedBy { it.startTime }
             } catch (e: Exception) {
-                android.util.Log.e("MyPetsScreen", "Failed to load events: ${e.message}")
+                android.util.Log.e("MyPetsScreen", "Failed to load events: ${e.message}", e)
                 events = emptyList()
             }
             isLoading = false
+        } else {
+            android.util.Log.d("MyPetsScreen", "No calendar permission or no pets. Permission: ${calendarManager.hasCalendarPermission()}, Pets: ${pets.size}")
         }
     }
     

@@ -16,6 +16,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +35,8 @@ import tn.rifq_android.viewmodel.profile.ProfileAction
 import tn.rifq_android.viewmodel.profile.ProfileUiState
 import tn.rifq_android.viewmodel.profile.ProfileViewModel
 import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
+import tn.rifq_android.util.SubscriptionManager
+import tn.rifq_android.data.model.subscription.SubscriptionStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +55,10 @@ fun ProfileScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val themePreference = remember { ThemePreference(context) }
+    
+    // Get subscription status to conditionally show subscription management button
+    val subscription by SubscriptionManager.subscription.collectAsState()
+    val hasSubscription = subscription != null && subscription?.subscriptionStatus != SubscriptionStatus.NONE
 
     // Dialog states
     var showEditDialog by remember { mutableStateOf(false) }
@@ -318,13 +325,15 @@ fun ProfileScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
-                        // Subscription Management - Show for all users
-                        SettingsCard(
-                            icon = "💳",
-                            label = "Subscription Management",
-                            onClick = onNavigateToSubscription
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        // Subscription Management - Show only when user has a subscription
+                        if (hasSubscription) {
+                            SettingsCard(
+                                icon = "💳",
+                                label = "Subscription Management",
+                                onClick = onNavigateToSubscription
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
 
                         // Delete Account Button
                         SettingsCard(
@@ -463,6 +472,7 @@ fun ProfileScreen(
                 SettingsSheetContent(
                     user = (uiState as ProfileUiState.Success).user,
                     themePreference = themePreference,
+                    hasSubscription = hasSubscription,
                     onDismiss = { showSettingsSheet = false },
                     onNavigateToChangePassword = {
                         showSettingsSheet = false
@@ -675,6 +685,7 @@ fun ThemeToggleCard(isDarkMode: Boolean, onToggle: (Boolean) -> Unit) {
 private fun SettingsSheetContent(
     user: tn.rifq_android.data.model.auth.User,
     themePreference: ThemePreference,
+    hasSubscription: Boolean,
     onDismiss: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToChangeEmail: () -> Unit,
@@ -798,11 +809,14 @@ private fun SettingsSheetContent(
                 enabled = user.provider != "google"
             )
             
-            SettingsRow(
-                icon = "💳",
-                label = "Subscription",
-                onClick = onNavigateToSubscription
-            )
+            // Subscription Management - Show only when user has a subscription
+            if (hasSubscription) {
+                SettingsRow(
+                    icon = "💳",
+                    label = "Subscription",
+                    onClick = onNavigateToSubscription
+                )
+            }
             
             SettingsRow(
                 icon = "❓",

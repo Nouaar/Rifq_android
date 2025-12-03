@@ -47,15 +47,27 @@ class MapViewModel : ViewModel() {
 
             try {
                 // Fetch vets and sitters in parallel (iOS Reference: MapViewModel.swift lines 23-24)
-                val vets = vetSitterApi.getAllVets()
-                val sitters = vetSitterApi.getAllSitters()
+                val vets = try {
+                    vetSitterApi.getAllVets()
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "Error fetching vets: ${e.message}", e)
+                    emptyList()
+                }
+                
+                val sitters = try {
+                    vetSitterApi.getAllSitters()
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "Error fetching sitters: ${e.message}", e)
+                    emptyList()
+                }
 
                 // Convert AppUser to VetLocation (iOS Reference: MapViewModel.swift lines 31-47)
                 _vetLocations.value = vets
                     .filter { 
                         val lat = it.latitude ?: 0.0
                         val lon = it.longitude ?: 0.0
-                        lat != 0.0 || lon != 0.0
+                        // Only filter out if both are exactly 0.0 (invalid coordinates)
+                        !(lat == 0.0 && lon == 0.0)
                     }
                     .map { vet ->
                         val lat = vet.latitude ?: 0.0
@@ -87,7 +99,8 @@ class MapViewModel : ViewModel() {
                     .filter { 
                         val lat = it.latitude ?: 0.0
                         val lon = it.longitude ?: 0.0
-                        lat != 0.0 || lon != 0.0
+                        // Only filter out if both are exactly 0.0 (invalid coordinates)
+                        !(lat == 0.0 && lon == 0.0)
                     }
                     .map { sitter ->
                         val lat = sitter.latitude ?: 0.0
