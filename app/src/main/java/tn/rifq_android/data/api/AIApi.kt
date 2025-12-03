@@ -1,13 +1,8 @@
 package tn.rifq_android.data.api
 
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Path
-import tn.rifq_android.data.model.ai.AIRemindersResponse
-import tn.rifq_android.data.model.ai.AIStatusResponse
-import tn.rifq_android.data.model.ai.AITipsResponse
-import tn.rifq_android.data.model.ai.AIResponseModel
+import retrofit2.Response
+import retrofit2.http.*
+import tn.rifq_android.data.model.ai.*
 
 
 interface AIApi {
@@ -31,4 +26,18 @@ interface AIApi {
     suspend fun generateAIResponse(
         @Body request: Map<String, String>
     ): AIResponseModel
+
+    @POST("chatbot/message")
+    suspend fun sendChatMessage(
+        @Body request: ChatbotMessageRequest
+    ): ChatbotResponse
+
+    @GET("chatbot/history")
+    suspend fun getHistory(
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0
+    ): ChatbotHistoryResponse
+
+    @DELETE("chatbot/history")
+    suspend fun deleteHistory(): Response<Unit>
 }

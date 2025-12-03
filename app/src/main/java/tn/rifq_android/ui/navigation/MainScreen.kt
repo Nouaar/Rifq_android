@@ -19,9 +19,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
+import tn.rifq_android.NotificationNavData
+import tn.rifq_android.data.api.RetrofitInstance
+import tn.rifq_android.data.repository.SubscriptionRepository
 import tn.rifq_android.data.storage.ThemePreference
+import tn.rifq_android.data.storage.TokenManager
 import tn.rifq_android.ui.components.BottomNavBar
+import tn.rifq_android.ui.components.NavigationDrawerOverlay
 import tn.rifq_android.ui.screens.home.HomeScreen
 import tn.rifq_android.ui.screens.profile.ProfileScreen
 import tn.rifq_android.ui.screens.discover.DiscoverScreen
@@ -39,7 +46,28 @@ import tn.rifq_android.ui.screens.map.MapScreen
 import tn.rifq_android.ui.screens.chat.ConversationsListScreen
 import tn.rifq_android.ui.screens.chat.ChatViewScreen
 import tn.rifq_android.ui.screens.auth.VerifyEmailScreen
+import tn.rifq_android.ui.screens.booking.BookingCreateScreen
+import tn.rifq_android.ui.screens.booking.BookingDetailScreen
+import tn.rifq_android.ui.screens.booking.BookingListScreen
+import tn.rifq_android.ui.screens.booking.BookingUpdateScreen
+import tn.rifq_android.ui.screens.calendar.AddCalendarEventScreen
+import tn.rifq_android.ui.screens.calendar.PetCalendarScreen
+import tn.rifq_android.ui.screens.chat.ChatAIScreen
+import tn.rifq_android.ui.screens.findhub.FindHubScreen
+import tn.rifq_android.ui.screens.join.JoinPetSitterScreen
+import tn.rifq_android.ui.screens.join.JoinTeamScreen
+import tn.rifq_android.ui.screens.join.JoinVetScreen
+import tn.rifq_android.ui.screens.mypets.MyPetsScreen
+import tn.rifq_android.ui.screens.notification.NotificationsScreen
+import tn.rifq_android.ui.screens.pet.AddPetFlowScreen
 import tn.rifq_android.ui.screens.pet.EditPetScreen
+import tn.rifq_android.ui.screens.petdetail.PetProfileScreen
+import tn.rifq_android.ui.screens.petsitter.PetSitterProfileScreen
+import tn.rifq_android.ui.screens.subscription.EmailVerificationScreen
+import tn.rifq_android.ui.screens.subscription.JoinWithSubscriptionScreen
+import tn.rifq_android.ui.screens.subscription.SubscriptionManagementScreen
+import tn.rifq_android.ui.screens.vet.VetProfileScreen
+import tn.rifq_android.util.JwtDecoder
 import tn.rifq_android.viewmodel.auth.AuthViewModel
 import tn.rifq_android.viewmodel.auth.AuthViewModelFactory
 import tn.rifq_android.viewmodel.booking.BookingViewModelFactory
@@ -47,11 +75,14 @@ import tn.rifq_android.viewmodel.profile.ProfileViewModel
 import tn.rifq_android.viewmodel.profile.ProfileViewModelFactory
 import tn.rifq_android.viewmodel.profile.ProfileUiState
 import tn.rifq_android.util.ProfileCompletionUtil
+import tn.rifq_android.util.SubscriptionManager
+import tn.rifq_android.viewmodel.booking.BookingViewModel
+import tn.rifq_android.viewmodel.chat.ChatViewModel
 
 @Composable
 fun MainScreen(
     themePreference: ThemePreference,
-    notificationNavData: tn.rifq_android.NotificationNavData? = null,
+    notificationNavData: NotificationNavData? = null,
     onNotificationHandled: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToChangeEmail: () -> Unit = {},
@@ -116,7 +147,7 @@ fun MainScreen(
     // Auto-navigate to edit profile if needed
     LaunchedEffect(shouldPresentEditProfile) {
         if (shouldPresentEditProfile) {
-            kotlinx.coroutines.delay(100)
+            delay(100)
             navController.navigate("edit_profile")
             shouldPresentEditProfile = false
         }
@@ -124,18 +155,18 @@ fun MainScreen(
     
     // Initialize SubscriptionManager (iOS Reference: MainTabView.swift line 11)
     LaunchedEffect(Unit) {
-        val tokenManager = tn.rifq_android.data.storage.TokenManager(context)
-        val repository = tn.rifq_android.data.repository.SubscriptionRepository(
-            tn.rifq_android.data.api.RetrofitInstance.subscriptionApi
+        val tokenManager = TokenManager(context)
+        val repository = SubscriptionRepository(
+            RetrofitInstance.subscriptionApi
         )
-        tn.rifq_android.util.SubscriptionManager.initialize(repository, tokenManager)
+        SubscriptionManager.initialize(repository, tokenManager)
         // Check subscription status on start (iOS Reference: MainTabView.swift line 127)
-        tn.rifq_android.util.SubscriptionManager.checkSubscriptionStatus()
+        SubscriptionManager.checkSubscriptionStatus()
     }
     
     // Show expiration alert if needed (iOS Reference: SubscriptionManager.swift line 14)
-    val showExpirationAlert by tn.rifq_android.util.SubscriptionManager.showExpirationAlert.collectAsState()
-    val expirationMessage by tn.rifq_android.util.SubscriptionManager.expirationMessage.collectAsState()
+    val showExpirationAlert by SubscriptionManager.showExpirationAlert.collectAsState()
+    val expirationMessage by SubscriptionManager.expirationMessage.collectAsState()
     
     // Handle notification navigation
     LaunchedEffect(notificationNavData) {
@@ -175,7 +206,7 @@ fun MainScreen(
     if (showExpirationAlert && expirationMessage != null) {
         AlertDialog(
             onDismissRequest = {
-                tn.rifq_android.util.SubscriptionManager.dismissExpirationAlert()
+                SubscriptionManager.dismissExpirationAlert()
             },
             title = {
                 Row(
@@ -194,7 +225,7 @@ fun MainScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        tn.rifq_android.util.SubscriptionManager.dismissExpirationAlert()
+                        SubscriptionManager.dismissExpirationAlert()
                         // Navigate to subscription management if needed
                         navController.navigate("subscription_management")
                     }
@@ -205,7 +236,7 @@ fun MainScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        tn.rifq_android.util.SubscriptionManager.dismissExpirationAlert()
+                        SubscriptionManager.dismissExpirationAlert()
                     }
                 ) {
                     Text("Dismiss")
@@ -241,22 +272,21 @@ fun MainScreen(
                 )
             }
 
-            // iOS tab: AI Chat
             composable("chat_ai") {
-                ChatAIScreen(
-                    navController = navController
-                )
+              ChatAIScreen(
+                  navController = navController,
+
+
+              )
             }
 
-            // iOS tab: My Pets
             composable("mypets") {
-                tn.rifq_android.ui.screens.mypets.MyPetsScreen(
+                MyPetsScreen(
                     navController = navController,
                     themePreference = themePreference
                 )
             }
 
-            // iOS tab: Profile
                     composable("profile") {
                         ProfileScreen(
                             navController = navController,
@@ -270,19 +300,19 @@ fun MainScreen(
 
             // Additional screens
             composable("join") {
-                tn.rifq_android.ui.screens.join.JoinTeamScreen(
+                JoinTeamScreen(
                     navController = navController
                 )
             }
             
             composable("join_team") {
-                tn.rifq_android.ui.screens.join.JoinTeamScreen(
+                JoinTeamScreen(
                     navController = navController
                 )
             }
 
             composable("join_vet") {
-                tn.rifq_android.ui.screens.join.JoinVetScreen(
+                JoinVetScreen(
                     navController = navController,
                     themePreference = themePreference,
                     fromSubscription = true // Always true when coming from subscription flow
@@ -290,7 +320,7 @@ fun MainScreen(
             }
 
             composable("join_sitter") {
-                tn.rifq_android.ui.screens.join.JoinPetSitterScreen(
+                JoinPetSitterScreen(
                     navController = navController,
                     themePreference = themePreference,
                     fromSubscription = true // Always true when coming from subscription flow
@@ -298,7 +328,7 @@ fun MainScreen(
             }
 
             composable("add_pet") {
-                tn.rifq_android.ui.screens.pet.AddPetFlowScreen(navController = navController)
+                AddPetFlowScreen(navController = navController)
             }
 
             composable("calendar") {
@@ -310,7 +340,7 @@ fun MainScreen(
                 arguments = listOf(navArgument("petId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val petId = backStackEntry.arguments?.getString("petId")
-                tn.rifq_android.ui.screens.calendar.PetCalendarScreen(
+                PetCalendarScreen(
                     navController = navController,
                     petId = petId
                 )
@@ -321,8 +351,8 @@ fun MainScreen(
                 // Extract query parameters from savedStateHandle (set via navigate with arguments)
                 val petId = backStackEntry.savedStateHandle.get<String>("petId")
                 val eventType = backStackEntry.savedStateHandle.get<String>("type")
-                
-                tn.rifq_android.ui.screens.calendar.AddCalendarEventScreen(
+
+                AddCalendarEventScreen(
                     navController = navController,
                     themePreference = themePreference,
                     petId = petId,
@@ -332,7 +362,7 @@ fun MainScreen(
             
             // Find Hub - Unified navigation to care services (iOS Reference: FindHubView.swift)
             composable("find_hub") {
-                tn.rifq_android.ui.screens.findhub.FindHubScreen(
+                FindHubScreen(
                     navController = navController,
                     themePreference = themePreference
                 )
@@ -361,7 +391,7 @@ fun MainScreen(
 
             composable("pet_detail/{petId}") { backStackEntry ->
                 val petId = backStackEntry.arguments?.getString("petId")
-                tn.rifq_android.ui.screens.petdetail.PetProfileScreen(navController = navController, petId = petId)
+                PetProfileScreen(navController = navController, petId = petId)
             }
 
             composable("medical_history/{petId}") { backStackEntry ->
@@ -421,17 +451,17 @@ fun MainScreen(
             composable("conversation/{conversationId}") { backStackEntry ->
                 val context = LocalContext.current
                 val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-                val chatViewModel: tn.rifq_android.viewmodel.chat.ChatViewModel = viewModel()
+                val chatViewModel: ChatViewModel = viewModel()
                 val conversations by chatViewModel.conversations.collectAsState()
                 
                 // Get current user ID from token
-                val tokenManager = remember { tn.rifq_android.data.storage.TokenManager(context) }
+                val tokenManager = remember { TokenManager(context) }
                 val currentUserId = remember {
                     var userId = ""
-                    kotlinx.coroutines.runBlocking {
+                    runBlocking {
                         val token = tokenManager.getAccessToken().firstOrNull()
                         userId = if (token != null) {
-                            tn.rifq_android.util.JwtDecoder.getUserIdFromToken(token) ?: ""
+                            JwtDecoder.getUserIdFromToken(token) ?: ""
                         } else {
                             ""
                         }
@@ -463,13 +493,13 @@ fun MainScreen(
                 val recipientId = backStackEntry.arguments?.getString("recipientId") ?: ""
                 val recipientName = backStackEntry.arguments?.getString("recipientName") ?: "User"
                 val context = LocalContext.current
-                val tokenManager = remember { tn.rifq_android.data.storage.TokenManager(context) }
+                val tokenManager = remember { TokenManager(context) }
                 val currentUserId = remember {
                     var userId = ""
-                    kotlinx.coroutines.runBlocking {
+                    runBlocking {
                         val token = tokenManager.getAccessToken().firstOrNull()
                         userId = if (token != null) {
-                            tn.rifq_android.util.JwtDecoder.getUserIdFromToken(token) ?: ""
+                            JwtDecoder.getUserIdFromToken(token) ?: ""
                         } else {
                             ""
                         }
@@ -490,7 +520,7 @@ fun MainScreen(
 
             composable("vet_profile/{userId}") { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                tn.rifq_android.ui.screens.vet.VetProfileScreen(
+                VetProfileScreen(
                     navController = navController,
                     vetId = userId
                 )
@@ -498,7 +528,7 @@ fun MainScreen(
 
             composable("sitter_profile/{userId}") { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                tn.rifq_android.ui.screens.petsitter.PetSitterProfileScreen(
+                PetSitterProfileScreen(
                     navController = navController,
                     sitterId = userId
                 )
@@ -506,8 +536,8 @@ fun MainScreen(
             
             // Booking screens (match iOS)
             composable("booking_list") {
-                val bookingVm: tn.rifq_android.viewmodel.booking.BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
-                tn.rifq_android.ui.screens.booking.BookingListScreen(
+                val bookingVm: BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
+                BookingListScreen(
                     viewModel = bookingVm,
                     onBookingSelected = { booking -> navController.navigate("booking_detail/${booking.id}") },
                     navController = navController
@@ -515,8 +545,8 @@ fun MainScreen(
             }
 
             composable("booking_create") {
-                val bookingVm: tn.rifq_android.viewmodel.booking.BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
-                tn.rifq_android.ui.screens.booking.BookingCreateScreen(
+                val bookingVm: BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
+                BookingCreateScreen(
                     viewModel = bookingVm,
                     onBookingCreated = { navController.navigate("booking_list") }
                 )
@@ -526,8 +556,8 @@ fun MainScreen(
                 val providerId = backStackEntry.arguments?.getString("providerId") ?: ""
                 val providerName = backStackEntry.arguments?.getString("providerName") ?: ""
                 val providerType = backStackEntry.arguments?.getString("providerType") ?: "vet"
-                val bookingVm: tn.rifq_android.viewmodel.booking.BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
-                tn.rifq_android.ui.screens.booking.BookingCreateScreen(
+                val bookingVm: BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
+                BookingCreateScreen(
                     viewModel = bookingVm,
                     providerId = providerId,
                     providerName = providerName,
@@ -543,9 +573,9 @@ fun MainScreen(
 
             composable("booking_detail/{bookingId}") { backStackEntry ->
                 val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
-                val bookingVm: tn.rifq_android.viewmodel.booking.BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
+                val bookingVm: BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
                 LaunchedEffect(bookingId) { bookingVm.fetchBookingById(bookingId) }
-                tn.rifq_android.ui.screens.booking.BookingDetailScreen(
+                BookingDetailScreen(
                     booking = bookingVm.selectedBooking.collectAsState().value,
                     onBack = { navController.popBackStack() },
                     viewModel = bookingVm
@@ -554,8 +584,8 @@ fun MainScreen(
 
             composable("booking_update/{bookingId}") { backStackEntry ->
                 val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
-                val bookingVm: tn.rifq_android.viewmodel.booking.BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
-                tn.rifq_android.ui.screens.booking.BookingUpdateScreen(
+                val bookingVm: BookingViewModel = viewModel(factory = BookingViewModelFactory(context))
+                BookingUpdateScreen(
                     viewModel = bookingVm,
                     bookingId = bookingId,
                     onBookingUpdated = { navController.navigate("booking_detail/$bookingId") }
@@ -564,26 +594,26 @@ fun MainScreen(
             
             // Notifications screen (iOS Reference: NotificationsView.swift)
             composable("notifications") {
-                tn.rifq_android.ui.screens.notification.NotificationsScreen(
+                NotificationsScreen(
                     navController = navController,
                 )
             }
             
             // Subscription Management (iOS Reference: STRIPE_SUBSCRIPTION_IMPLEMENTATION.md)
             composable("subscription_management") {
-                tn.rifq_android.ui.screens.subscription.SubscriptionManagementScreen(
+                SubscriptionManagementScreen(
                     navController = navController
                 )
             }
             
             composable("join_vet_sitter") {
-                tn.rifq_android.ui.screens.subscription.JoinWithSubscriptionScreen(
+                JoinWithSubscriptionScreen(
                     navController = navController
                 )
             }
             
             composable("email_verification") {
-                tn.rifq_android.ui.screens.subscription.EmailVerificationScreen(
+                EmailVerificationScreen(
                     navController = navController
                 )
             }
@@ -616,8 +646,8 @@ fun MainScreen(
         val userImage = if (profileUiState is ProfileUiState.Success) {
             (profileUiState as ProfileUiState.Success).user.profileImage
         } else null
-        
-        tn.rifq_android.ui.components.NavigationDrawerOverlay(
+
+        NavigationDrawerOverlay(
             navController = navController,
             userName = userName,
             userImage = userImage

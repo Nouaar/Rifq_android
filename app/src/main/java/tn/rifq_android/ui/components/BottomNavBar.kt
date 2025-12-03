@@ -26,10 +26,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import tn.rifq_android.ui.theme.*
 
-/**
- * Bottom Navigation Bar matching iOS VetTabBar design
- * iOS Reference: VetTabBar.swift
- */
+
 @Composable
 fun BottomNavBar(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -53,7 +50,6 @@ fun BottomNavBar(navController: NavHostController) {
             .height(90.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Background with rounded rectangle, shadow, and border (iOS Reference: VetTabBar.swift lines 38-44)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -80,7 +76,6 @@ fun BottomNavBar(navController: NavHostController) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left side: Home and Discover (iOS Reference: VetTabBar.swift lines 47-48)
                 StandardTabButton(
                     tab = VetTab.HOME,
                     isSelected = selectedTab == VetTab.HOME,
@@ -109,10 +104,8 @@ fun BottomNavBar(navController: NavHostController) {
                     modifier = Modifier.weight(1f)
                 )
 
-                // Reserve space for floating AI button (iOS Reference: VetTabBar.swift lines 50-54)
                 Spacer(modifier = Modifier.width(centerButtonSpace))
 
-                // Right side: My Pets and Profile (iOS Reference: VetTabBar.swift lines 56-57)
                 StandardTabButton(
                     tab = VetTab.MY_PETS,
                     isSelected = selectedTab == VetTab.MY_PETS,
@@ -161,9 +154,9 @@ fun BottomNavBar(navController: NavHostController) {
 enum class VetTab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Default.Home),
     DISCOVER("Discover", Icons.Default.LocationOn),
-    AI("AI", Icons.Default.Star), // iOS: "sparkles" - using Star as closest match
-    MY_PETS("My Pets", Icons.Default.Favorite), // iOS: "pawprint.fill" - using Favorite as closest match
-    PROFILE("Profile", Icons.Default.Person) // iOS: "person.crop.circle.fill" - using Person
+    AI("AI", Icons.Default.Star),
+    MY_PETS("My Pets", Icons.Default.Favorite),
+    PROFILE("Profile", Icons.Default.Person)
 }
 
 @Composable

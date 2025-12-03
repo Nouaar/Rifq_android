@@ -75,18 +75,15 @@ object RetrofitInstance {
 
     private val refreshApi: AuthApi by lazy { noAuthRetrofit.create(AuthApi::class.java) }
 
-    // Authenticator to handle 401 by refreshing token once
+
     private val tokenAuthenticator = Authenticator { route: Route?, response: Response ->
-        // Avoid infinite loops: if we've already attempted with a refreshed token, give up
         if (responseCount(response) >= 2) {
-            // Clear invalid tokens
             runBlocking { tokenManager?.clearTokens() }
             return@Authenticator null
         }
 
         val manager = tokenManager ?: return@Authenticator null
 
-        // Get refresh token
         val refreshToken = runBlocking { manager.getRefreshToken().firstOrNull() }
         if (refreshToken.isNullOrEmpty()) {
             runBlocking { manager.clearTokens() }
@@ -145,7 +142,6 @@ object RetrofitInstance {
             .build()
     }
 
-    // Separate OkHttp client for AI endpoints with longer timeouts
     private val aiClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .authenticator(tokenAuthenticator)
