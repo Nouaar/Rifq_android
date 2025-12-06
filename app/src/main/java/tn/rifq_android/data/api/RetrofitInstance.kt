@@ -19,11 +19,10 @@ import tn.rifq_android.data.storage.TokenManager
 import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
-    private const val BASE_URL = "https://rifq.onrender.com/"
+    private const val BASE_URL = "http://10.0.2.2:3000/"
 
     private var tokenManager: TokenManager? = null
     
-    // Track ongoing refresh to prevent concurrent refresh attempts
     @Volatile
     private var isRefreshing = false
     private val refreshLock = Any()
@@ -212,6 +211,7 @@ object RetrofitInstance {
     val userApi: UserApi by lazy { retrofit.create(UserApi::class.java) }
     val chatApi: ChatApi by lazy { retrofit.create(ChatApi::class.java) }
     val vetSitterApi: VetSitterApi by lazy { retrofit.create(VetSitterApi::class.java) }
+    val communityApi: CommunityApi by lazy { retrofit.create(CommunityApi::class.java) }
 
     // Retrofit instance for AI endpoints (longer timeouts)
     private val aiRetrofit: Retrofit by lazy {

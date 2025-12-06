@@ -27,7 +27,6 @@ import tn.rifq_android.data.api.RetrofitInstance
 import tn.rifq_android.data.repository.SubscriptionRepository
 import tn.rifq_android.data.storage.ThemePreference
 import tn.rifq_android.data.storage.TokenManager
-import tn.rifq_android.ui.components.BottomNavBar
 import tn.rifq_android.ui.components.NavigationDrawerOverlay
 import tn.rifq_android.ui.screens.home.HomeScreen
 import tn.rifq_android.ui.screens.profile.ProfileScreen
@@ -284,6 +283,25 @@ fun MainScreen(
                 MyPetsScreen(
                     navController = navController,
                     themePreference = themePreference
+                )
+            }
+
+            composable("community") {
+                tn.rifq_android.ui.screens.community.CommunityScreen(
+                    navController = navController,
+                    themePreference = themePreference
+                )
+            }
+            
+            // User Profile from Community
+            composable(
+                route = "user_profile/{userId}",
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                tn.rifq_android.ui.screens.community.UserProfileScreen(
+                    navController = navController,
+                    userId = userId
                 )
             }
 

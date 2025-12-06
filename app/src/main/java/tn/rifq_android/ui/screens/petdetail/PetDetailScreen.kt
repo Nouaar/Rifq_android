@@ -26,7 +26,7 @@ import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.data.model.pet.Pet
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.ui.utils.PetUtils
+import tn.rifq_android.util.PetUtils
 import tn.rifq_android.util.Constants
 import tn.rifq_android.viewmodel.pet.PetDetailViewModel
 import tn.rifq_android.viewmodel.pet.PetDetailViewModelFactory

@@ -81,7 +81,7 @@ import tn.rifq_android.ui.theme.TextPrimary
 import tn.rifq_android.ui.theme.TextSecondary
 import tn.rifq_android.ui.theme.VetCanyon
 import tn.rifq_android.ui.theme.VetStroke
-import tn.rifq_android.ui.utils.PetUtils
+import tn.rifq_android.util.PetUtils
 import tn.rifq_android.util.ImageFileHelper
 import tn.rifq_android.viewmodel.pet.PetActionState
 import tn.rifq_android.viewmodel.pet.PetDetailUiState

@@ -1,10 +1,9 @@
-package tn.rifq_android.ui.utils
+package tn.rifq_android.util
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import tn.rifq_android.ui.theme.PetAvatarBrown
 import tn.rifq_android.ui.theme.PetAvatarTan
-import tn.rifq_android.util.Constants
 
 /**
  * Utility functions for pet-related UI operations
@@ -90,4 +89,3 @@ object PetUtils {
         return height?.let { "$it cm" } ?: "N/A"
     }
 }
-

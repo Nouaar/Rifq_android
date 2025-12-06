@@ -3,6 +3,11 @@ package tn.rifq_android.data.api
 import retrofit2.Response
 import retrofit2.http.*
 import tn.rifq_android.data.model.ai.*
+import retrofit2.http.Path
+import tn.rifq_android.data.model.ai.AIRemindersResponse
+import tn.rifq_android.data.model.ai.AIStatusResponse
+import tn.rifq_android.data.model.ai.AITipsResponse
+import tn.rifq_android.data.model.ai.AIResponseModel
 
 
 interface AIApi {
@@ -21,11 +26,6 @@ interface AIApi {
     suspend fun getStatus(
         @Path("petId") petId: String
     ): AIStatusResponse
-
-    @POST("ai/chat")
-    suspend fun generateAIResponse(
-        @Body request: Map<String, String>
-    ): AIResponseModel
 
     @POST("chatbot/message")
     suspend fun sendChatMessage(

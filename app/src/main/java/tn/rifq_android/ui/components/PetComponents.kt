@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.ui.utils.PetUtils
+import tn.rifq_android.util.PetUtils
 import java.text.SimpleDateFormat
 import java.util.*
 

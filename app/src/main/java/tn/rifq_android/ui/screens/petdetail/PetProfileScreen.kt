@@ -27,7 +27,7 @@ import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
-import tn.rifq_android.ui.utils.PetUtils
+import tn.rifq_android.util.PetUtils
 import tn.rifq_android.util.CalendarEvent
 import tn.rifq_android.util.CalendarManager
 import tn.rifq_android.viewmodel.pet.PetDetailViewModel

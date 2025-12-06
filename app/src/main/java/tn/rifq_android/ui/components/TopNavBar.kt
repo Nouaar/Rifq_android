@@ -35,6 +35,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.rememberAsyncImagePainter
 import tn.rifq_android.ui.theme.*
 
+
 // Global state for drawer
 object DrawerState {
     val isExpanded = mutableStateOf(false)
@@ -220,7 +221,8 @@ fun NavigationDrawerMenu(
         MenuItem("My Pets", Icons.Filled.Favorite, "myPets"),
         MenuItem("Conversations", Icons.Filled.Email, "conversations"),
         MenuItem("My Bookings", Icons.Filled.DateRange, "booking_list"),
-        MenuItem("Calendar", Icons.Filled.DateRange, "calendar")
+        MenuItem("Calendar", Icons.Filled.Edit, "calendar"),
+        MenuItem("Community", Icons.Filled.Menu, "community")
     )
 
     Surface(
