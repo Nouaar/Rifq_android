@@ -176,4 +176,50 @@ class CommunityViewModel : ViewModel() {
     fun clearError() {
         _error.value = null
     }
+    
+    fun loadMyPosts(refresh: Boolean = false) {
+        viewModelScope.launch {
+            if (refresh) {
+                _isRefreshing.value = true
+                currentPage = 1
+                hasMorePages = true
+            } else {
+                _isLoading.value = true
+            }
+            
+            try {
+                val response = communityApi.getMyPosts(
+                    page = currentPage,
+                    limit = 10
+                )
+                
+                if (response.isSuccessful) {
+                    val data = response.body()
+                    if (data != null) {
+                        if (refresh) {
+                            _posts.value = data.posts
+                        } else {
+                            _posts.value = _posts.value + data.posts
+                        }
+                        
+                        hasMorePages = currentPage < data.totalPages
+                        currentPage++
+                    }
+                } else {
+                    _error.value = "Failed to load posts: ${response.message()}"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "An error occurred"
+            } finally {
+                _isLoading.value = false
+                _isRefreshing.value = false
+            }
+        }
+    }
+    
+    fun loadMoreMyPosts() {
+        if (!_isLoading.value && hasMorePages) {
+            loadMyPosts()
+        }
+    }
 }

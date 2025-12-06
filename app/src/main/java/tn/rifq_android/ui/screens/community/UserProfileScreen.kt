@@ -40,9 +40,7 @@ fun UserProfileScreen(
     
     // Load user profile by ID
     LaunchedEffect(userId) {
-        // viewModel.loadUserProfile(userId)
-        // For now, load current user's profile
-        viewModel.loadProfile()
+        viewModel.loadUserProfile(userId)
     }
     
     val uiState by viewModel.uiState.collectAsState()
@@ -50,7 +48,13 @@ fun UserProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Profile") },
+                title = {
+                    Text(
+                        "Profile",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")

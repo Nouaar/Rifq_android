@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,7 @@ import kotlinx.coroutines.launch
 import tn.rifq_android.data.model.community.Post
 import tn.rifq_android.data.model.community.ReactionType
 import tn.rifq_android.ui.theme.*
+import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.util.ImageFileHelper
 import tn.rifq_android.viewmodel.community.CommunityViewModel
 import tn.rifq_android.data.storage.UserManager
@@ -62,31 +64,76 @@ fun CommunityScreen(
     val scope = rememberCoroutineScope()
     
     var showCreatePostDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) } // 0 = All Posts, 1 = My Posts
+    
+    // Load appropriate posts based on selected tab
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) {
+            viewModel.loadPosts(refresh = true)
+        } else {
+            viewModel.loadMyPosts(refresh = true)
+        }
+    }
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Community",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
-                    )
-                },
-                actions = {
-                    // Refresh button
-                    IconButton(onClick = { viewModel.loadPosts(refresh = true) }) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint = if (isRefreshing) VetCanyon else MaterialTheme.colorScheme.onSurface
+            Column {
+                TopNavBar(
+                    title = "Community",
+                    navController = navController,
+                    showBackButton = false,
+                    showMenuButton = true,
+                    actions = {
+                        IconButton(onClick = { 
+                            if (selectedTab == 0) {
+                                viewModel.loadPosts(refresh = true)
+                            } else {
+                                viewModel.loadMyPosts(refresh = true)
+                            }
+                        }) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                tint = if (isRefreshing) VetCanyon else TextPrimary
+                            )
+                        }
+                    }
+                )
+                
+                // Tab Row
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = VetCanyon,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = VetCanyon
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = {
+                            Text(
+                                "All Posts",
+                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = {
+                            Text(
+                                "My Posts",
+                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -122,14 +169,19 @@ fun CommunityScreen(
                                 navController.navigate("user_profile/$userId")
                             }
                         },
-                        onDeleteClick = { viewModel.deletePost(post.id) }
+                        onDeleteClick = { viewModel.deletePost(post.id) },
+                        showDeleteButton = post.userId == currentUserId
                     )
                 }
                 
                 // Load more trigger
                 item {
                     LaunchedEffect(Unit) {
-                        viewModel.loadMorePosts()
+                        if (selectedTab == 0) {
+                            viewModel.loadMorePosts()
+                        } else {
+                            viewModel.loadMoreMyPosts()
+                        }
                     }
                     
                     if (isLoading && posts.isNotEmpty()) {
@@ -194,7 +246,8 @@ fun PostCard(
     post: Post,
     onReactionClick: (ReactionType) -> Unit,
     onUserClick: (String) -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    showDeleteButton: Boolean = false
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
     
@@ -251,12 +304,14 @@ fun PostCard(
                     )
                 }
                 
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "More options",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                if (showDeleteButton) {
+                    IconButton(onClick = onDeleteClick) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete post",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
             

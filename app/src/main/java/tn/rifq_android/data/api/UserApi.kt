@@ -11,6 +11,9 @@ interface UserApi {
     @GET("users")
     suspend fun getAllUsers(): List<tn.rifq_android.data.model.auth.AppUser>
 
+    @GET("users/{id}")
+    suspend fun getUserById(@Path("id") userId: String): Response<AuthUser>
+
     @GET("users/profile")
     suspend fun getProfile(): Response<AuthUser>
 

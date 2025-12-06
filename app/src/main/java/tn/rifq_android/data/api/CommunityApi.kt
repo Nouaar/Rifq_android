@@ -12,6 +12,12 @@ interface CommunityApi {
         @Query("limit") limit: Int = 10
     ): Response<PostsResponse>
     
+    @GET("community/my-posts")
+    suspend fun getMyPosts(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 10
+    ): Response<PostsResponse>
+    
     @Multipart
     @POST("community/posts")
     suspend fun createPost(

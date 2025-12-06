@@ -64,6 +64,40 @@ class ProfileViewModel(
         }
     }
 
+    fun loadUserProfile(userId: String) {
+        viewModelScope.launch {
+            _uiState.value = ProfileUiState.Loading
+            try {
+                // Fetch user profile by ID
+                val userResponse = userRepository.getUserById(userId)
+                if (!userResponse.isSuccessful) {
+                    _uiState.value = ProfileUiState.Error(
+                        userResponse.errorBody()?.string() ?: "Failed to load profile"
+                    )
+                    return@launch
+                }
+
+                val user = userResponse.body()
+                if (user == null) {
+                    _uiState.value = ProfileUiState.Error("No profile data received")
+                    return@launch
+                }
+
+                // Fetch pets separately
+                val petsResponse = petsRepository.getPetsByOwner(userId)
+                val pets = if (petsResponse.isSuccessful) {
+                    petsResponse.body() ?: emptyList()
+                } else {
+                    emptyList()
+                }
+
+                _uiState.value = ProfileUiState.Success(user, pets)
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+
     fun loadProfile() {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading

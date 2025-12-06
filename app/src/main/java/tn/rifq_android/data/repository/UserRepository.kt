@@ -9,6 +9,8 @@ import java.io.File
 
 class UserRepository(private val api: UserApi) {
 
+    suspend fun getUserById(userId: String) = api.getUserById(userId)
+
     suspend fun getProfile() = api.getProfile()
 
     suspend fun updateProfile(
