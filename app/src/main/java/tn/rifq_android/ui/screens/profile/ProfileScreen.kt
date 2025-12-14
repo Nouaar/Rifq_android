@@ -44,8 +44,6 @@ fun ProfileScreen(
     navController: androidx.navigation.NavHostController,
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToChangeEmail: () -> Unit = {},
-    onNavigateToJoin: () -> Unit = {},
-    onNavigateToSubscription: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -70,6 +68,8 @@ fun ProfileScreen(
     // Refresh when switching to Profile tab
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
+        // Load subscription status to show/hide subscription button
+        SubscriptionManager.checkSubscriptionStatus()
     }
     
     // Profile completion check (iOS Reference: ProfileView.swift lines 200-250)
@@ -215,13 +215,27 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Name and Title
-                    Text(
-                        state.user.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 28.sp,
-                        color = TextPrimary
-                    )
+                    // Name with Verified Badge
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            state.user.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 28.sp,
+                            color = TextPrimary
+                        )
+                        if (state.user.hasActiveSubscription == true) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Verified",
+                                tint = BlueAccent,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
 
                     Text(
                         state.user.role.replaceFirstChar { it.uppercase() },
@@ -325,16 +339,6 @@ fun ProfileScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
-                        // Subscription Management - Show only when user has a subscription
-                        if (hasSubscription) {
-                            SettingsCard(
-                                icon = "💳",
-                                label = "Subscription Management",
-                                onClick = onNavigateToSubscription
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
                         // Delete Account Button
                         SettingsCard(
                             icon = "🗑️",
@@ -347,35 +351,66 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Join Us Button - Navigate to JoinTeamScreen (iOS Reference: JoinTeamView.swift)
-                    Button(
-                        onClick = { onNavigateToJoin() },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = VetCanyon
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    // Subscribe Now / Manage Subscription Button
+                    if (hasSubscription) {
+                        Button(
+                            onClick = { navController.navigate("manage_subscription") },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = BlueAccent
+                            )
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = androidx.compose.ui.graphics.Color.White
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = null,
+                                    tint = androidx.compose.ui.graphics.Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Manage Subscription",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = androidx.compose.ui.graphics.Color.White
+                                )
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = { navController.navigate("subscription_benefits") },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = OrangeAccent
                             )
-                            Text(
-                                "JOIN US",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = androidx.compose.ui.graphics.Color.White,
-                                letterSpacing = 0.5.sp
-                            )
-                            Spacer(modifier = Modifier.width(24.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = androidx.compose.ui.graphics.Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Subscribe Now",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = androidx.compose.ui.graphics.Color.White
+                                )
+                            }
                         }
                     }
 
@@ -481,10 +516,6 @@ fun ProfileScreen(
                     onNavigateToChangeEmail = {
                         showSettingsSheet = false
                         onNavigateToChangeEmail()
-                    },
-                    onNavigateToSubscription = {
-                        showSettingsSheet = false
-                        onNavigateToSubscription()
                     },
                     onNavigateToHelp = {
                         showSettingsSheet = false
@@ -689,7 +720,6 @@ private fun SettingsSheetContent(
     onDismiss: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToChangeEmail: () -> Unit,
-    onNavigateToSubscription: () -> Unit,
     onNavigateToHelp: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -808,15 +838,6 @@ private fun SettingsSheetContent(
                 },
                 enabled = user.provider != "google"
             )
-            
-            // Subscription Management - Show only when user has a subscription
-            if (hasSubscription) {
-                SettingsRow(
-                    icon = "💳",
-                    label = "Subscription",
-                    onClick = onNavigateToSubscription
-                )
-            }
             
             SettingsRow(
                 icon = "❓",

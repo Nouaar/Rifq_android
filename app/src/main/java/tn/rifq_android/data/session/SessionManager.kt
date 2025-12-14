@@ -81,24 +81,13 @@ class SessionManager private constructor(private val context: Context) {
             val isAccessTokenValid = isTokenValid(accessToken, bufferSeconds = 300)
             
             if (isAccessTokenValid) {
-                // Access token is still valid, verify with backend
-                Log.d(TAG, "Access token is valid, verifying with backend...")
-                try {
-                    val response = RetrofitInstance.api.getMe()
-                    if (response.isSuccessful && response.body() != null) {
-                        val user = response.body()!!
-                        val userId = user.id ?: user.email ?: ""
-                        userManager.saveUserId(userId)
-                        
-                        _isAuthenticated.value = true
-                        _hasRestoredSession.value = true
-                        Log.d(TAG, "Session restored successfully with existing token")
-                        return true
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to verify token with backend: ${e.message}")
-                    // Token might be expired, try to refresh
-                }
+                // Access token is still valid, trust it and restore session
+                // The tokenAuthenticator will handle token refresh if needed on API calls
+                Log.d(TAG, "Access token is valid, restoring session...")
+                _isAuthenticated.value = true
+                _hasRestoredSession.value = true
+                Log.d(TAG, "Session restored successfully with existing token")
+                return true
             }
             
             // Access token is expired or invalid, try to refresh

@@ -115,11 +115,10 @@ fun JoinPetSitterScreen(
         when (uiState) {
             is tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Success -> {
                 val successState = uiState as tn.rifq_android.viewmodel.vetsitter.VetSitterUiState.Success
-                if (successState.requiresVerification) {
-                    // Navigate to email verification
-                    navController.navigate("email_verification") {
-                        popUpTo("join_sitter") { inclusive = true }
-                    }
+                // Profile created successfully - navigate to home
+                navController.navigate("home") {
+                    popUpTo("join_sitter") { inclusive = true }
+                    launchSingleTop = true
                 }
             }
             else -> {}

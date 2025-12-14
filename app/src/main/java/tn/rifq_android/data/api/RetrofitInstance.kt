@@ -81,9 +81,9 @@ object RetrofitInstance {
 
 
     private val tokenAuthenticator = Authenticator { route: Route?, response: Response ->
-        // Prevent infinite retry loops
-        if (responseCount(response) >= 2) {
-            runBlocking { tokenManager?.clearTokens() }
+        // Prevent infinite retry loops - after 3 attempts, give up but don't clear tokens
+        // Tokens might still be valid, just backend might be having issues
+        if (responseCount(response) >= 3) {
             return@Authenticator null
         }
 
@@ -122,6 +122,7 @@ object RetrofitInstance {
         try {
             val refreshToken = runBlocking { manager.getRefreshToken().firstOrNull() }
             if (refreshToken.isNullOrEmpty()) {
+                // No refresh token available - can't recover from this
                 runBlocking { manager.clearTokens() }
                 return@Authenticator null
             }
@@ -131,6 +132,7 @@ object RetrofitInstance {
                 runBlocking { refreshApi.refresh(RefreshRequest(refreshToken)) }
             } catch (e: Exception) {
                 // Network error or server issue - don't clear tokens, might be temporary
+                // Tokens could still be valid, just backend might be unreachable
                 return@Authenticator null
             } finally {
                 synchronized(refreshLock) {
@@ -139,14 +141,17 @@ object RetrofitInstance {
             }
 
             if (refreshResponse == null || !refreshResponse.isSuccessful) {
-                // Refresh failed - tokens are invalid, clear them
-                runBlocking { manager.clearTokens() }
+                // Refresh failed - only clear tokens if it's a 401 (invalid refresh token)
+                // For other errors (500, network issues), keep tokens
+                if (refreshResponse?.code() == 401) {
+                    runBlocking { manager.clearTokens() }
+                }
                 return@Authenticator null
             }
 
             val tokens = refreshResponse.body()?.tokens
             if (tokens == null) {
-                runBlocking { manager.clearTokens() }
+                // Invalid response format - don't clear tokens, might be server issue
                 return@Authenticator null
             }
 

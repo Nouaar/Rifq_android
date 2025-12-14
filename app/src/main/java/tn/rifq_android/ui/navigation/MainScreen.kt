@@ -310,8 +310,6 @@ fun MainScreen(
                             navController = navController,
                             onNavigateToChangePassword = onNavigateToChangePassword,
                             onNavigateToChangeEmail = onNavigateToChangeEmail,
-                            onNavigateToJoin = { navController.navigate("join_vet_sitter") },
-                            onNavigateToSubscription = { navController.navigate("subscription_management") },
                             onLogout = onLogout
                         )
                     }
@@ -624,6 +622,20 @@ fun MainScreen(
                 )
             }
             
+            // New Subscription Flow
+            composable("subscription_benefits") {
+                tn.rifq_android.ui.screens.subscription.SubscriptionBenefitsScreen(
+                    navController = navController
+                )
+            }
+            
+            composable("manage_subscription") {
+                tn.rifq_android.ui.screens.subscription.ManageSubscriptionScreen(
+                    navController = navController
+                )
+            }
+            
+            // Old subscription flow - kept for backward compatibility
             composable("join_vet_sitter") {
                 JoinWithSubscriptionScreen(
                     navController = navController

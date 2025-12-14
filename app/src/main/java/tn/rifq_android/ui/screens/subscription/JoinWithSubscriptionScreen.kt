@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.PaymentSheetResult
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 import tn.rifq_android.viewmodel.subscription.SubscriptionUiState
@@ -37,10 +40,10 @@ import tn.rifq_android.viewmodel.subscription.SubscriptionViewModelFactory
  * 1. User selects role (vet or sitter)
  * 2. Reviews subscription details ($30/month)
  * 3. Creates subscription
- * 4. Backend sends verification email
- * 5. User verifies email (navigates to email verification screen)
- * 6. Subscription status changes to "active"
- * 7. User role upgraded, added to discover list/map
+ * 4. Completes payment via Stripe
+ * 5. Subscription activates automatically upon payment success
+ * 6. User role upgraded, added to discover list/map
+ * 7. Navigate to professional profile setup
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,47 +51,59 @@ fun JoinWithSubscriptionScreen(
     navController: NavHostController,
     viewModel: SubscriptionViewModel = viewModel(factory = SubscriptionViewModelFactory())
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val stripeHandler = remember { tn.rifq_android.util.StripePaymentHandler(context) }
-    
     var selectedRole by remember { mutableStateOf<String?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
-    var showPaymentProcessing by remember { mutableStateOf(false) }
-    var showPaymentScreen by remember { mutableStateOf(false) }
     
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Initialize Stripe PaymentSheet (must be at composable scope level)
+    val paymentSheet = rememberPaymentSheet { result ->
+        when (result) {
+            is PaymentSheetResult.Completed -> {
+                // Payment successful, subscription activated automatically
+                // Navigate to appropriate profile setup based on selected role
+                val destination = when (selectedRole) {
+                    "vet" -> "join_vet"
+                    "sitter" -> "join_sitter"
+                    else -> "profile"
+                }
+                navController.navigate(destination) {
+                    popUpTo("join_vet_sitter") { inclusive = true }
+                }
+                viewModel.resetUiState()
+            }
+            is PaymentSheetResult.Canceled -> {
+                viewModel.setError("Payment cancelled")
+            }
+            is PaymentSheetResult.Failed -> {
+                viewModel.setError(result.error.message ?: "Payment failed. Please try again.")
+            }
+        }
+    }
     
     // Handle payment required
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is SubscriptionUiState.PaymentRequired -> {
-                showPaymentProcessing = true
-                stripeHandler.handlePayment(
-                    clientSecret = state.clientSecret,
-                    onSuccess = {
-                        showPaymentProcessing = false
-                        // Payment successful, navigate to form screen to fill details
-                        if (selectedRole != null) {
-                            val route = if (selectedRole == "vet") "join_vet" else "join_sitter"
-                            navController.navigate(route) {
-                                popUpTo("join_vet_sitter") { inclusive = true }
-                            }
-                        }
-                        viewModel.resetUiState()
-                    },
-                    onError = { error ->
-                        showPaymentProcessing = false
-                        viewModel.setError(error)
-                    }
+                // Present Stripe payment sheet
+                paymentSheet.presentWithPaymentIntent(
+                    state.clientSecret,
+                    PaymentSheet.Configuration(
+                        merchantDisplayName = "Rifq Pet Care",
+                        allowsDelayedPaymentMethods = false
+                    )
                 )
             }
             is SubscriptionUiState.Success -> {
-                // Direct success (no payment required), navigate to form screen
-                if (selectedRole != null) {
-                    val route = if (selectedRole == "vet") "join_vet" else "join_sitter"
-                    navController.navigate(route) {
-                        popUpTo("join_vet_sitter") { inclusive = true }
-                    }
+                // Test mode - subscription activated immediately
+                // Navigate to appropriate profile setup based on selected role
+                val destination = when (selectedRole) {
+                    "vet" -> "join_vet"
+                    "sitter" -> "join_sitter"
+                    else -> "profile"
+                }
+                navController.navigate(destination) {
+                    popUpTo("join_vet_sitter") { inclusive = true }
                 }
                 viewModel.resetUiState()
             }
@@ -96,26 +111,7 @@ fun JoinWithSubscriptionScreen(
         }
     }
     
-    // Payment processing dialog
-    if (showPaymentProcessing) {
-        AlertDialog(
-            onDismissRequest = { },
-            title = { Text("Processing Payment") },
-            text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Please wait while we process your payment...")
-                }
-            },
-            confirmButton = { }
-        )
-    }
-    
-    // Confirm dialog
+    // Confirm dialogsuccessful payment, your subscription will be activated automatically and you can set up your professional profile
     if (showConfirmDialog && selectedRole != null) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
@@ -332,7 +328,7 @@ fun JoinWithSubscriptionScreen(
                 Button(
                     onClick = {
                         if (selectedRole != null) {
-                            showPaymentScreen = true
+                            showConfirmDialog = true
                         }
                     },
                     modifier = Modifier
@@ -360,23 +356,6 @@ fun JoinWithSubscriptionScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
             }
-    }
-    
-    // Payment Screen as Popup
-    if (showPaymentScreen) {
-        PaymentScreen(
-            amount = "$${SubscriptionViewModel.SUBSCRIPTION_PRICE}/month",
-            onPaymentComplete = {
-                showPaymentScreen = false
-                // After payment screen, proceed with subscription creation
-                if (selectedRole != null) {
-                    viewModel.createSubscription(selectedRole!!)
-                }
-            },
-            onDismiss = {
-                showPaymentScreen = false
-            }
-        )
     }
 }
 

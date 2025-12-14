@@ -63,22 +63,7 @@ fun SubscriptionManagementScreen(
     var showCancelDialog by remember { mutableStateOf(false) }
     var showReactivateDialog by remember { mutableStateOf(false) }
     var showRenewDialog by remember { mutableStateOf(false) }
-    var showVerifyDialog by remember { mutableStateOf(false) }
-    var verificationCode by remember { mutableStateOf("") }
     var lastSuccessMessage by remember { mutableStateOf<String?>(null) }
-    
-    // Get user email from token
-    val userEmail = remember {
-        val tokenManager = tn.rifq_android.data.storage.TokenManager(context)
-        var email = ""
-        kotlinx.coroutines.runBlocking {
-            val token = tokenManager.getAccessToken().firstOrNull()
-            if (token != null) {
-                email = tn.rifq_android.util.JwtDecoder.getEmailFromToken(token) ?: ""
-            }
-        }
-        email
-    }
     
     // Load subscription on start
     LaunchedEffect(Unit) {
@@ -198,61 +183,6 @@ fun SubscriptionManagementScreen(
         )
     }
     
-    // Verification Code Dialog
-    if (showVerifyDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showVerifyDialog = false
-                verificationCode = ""
-            },
-            title = { Text("Enter Verification Code") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter the 6-digit code sent to your email:",
-                        fontSize = 14.sp,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    OutlinedTextField(
-                        value = verificationCode,
-                        onValueChange = { if (it.length <= 6) verificationCode = it },
-                        label = { Text("Verification Code") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (verificationCode.length == 6) {
-                            viewModel.verifyEmail(verificationCode, userEmail)
-                            showVerifyDialog = false
-                            verificationCode = ""
-                        }
-                    },
-                    enabled = verificationCode.length == 6
-                ) {
-                    Text("Verify", color = OrangeAccent)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showVerifyDialog = false
-                        verificationCode = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-    
     Scaffold(
         topBar = {
             TopNavBar(
@@ -308,13 +238,11 @@ fun SubscriptionManagementScreen(
                     } else {
                         SubscriptionContent(
                             subscription = subscription!!,
-                            userEmail = userEmail,
                             viewModel = viewModel,
                             navController = navController,
                             onCancel = { showCancelDialog = true },
                             onReactivate = { showReactivateDialog = true },
-                            onRenew = { showRenewDialog = true },
-                            onShowVerifyDialog = { showVerifyDialog = true }
+                            onRenew = { showRenewDialog = true }
                         )
                     }
                 }
@@ -368,13 +296,11 @@ private fun NoSubscriptionContent(navController: NavHostController) {
 @Composable
 private fun SubscriptionContent(
     subscription: tn.rifq_android.data.model.subscription.Subscription,
-    userEmail: String,
     viewModel: SubscriptionViewModel,
     navController: NavHostController,
     onCancel: () -> Unit,
     onReactivate: () -> Unit,
-    onRenew: () -> Unit,
-    onShowVerifyDialog: () -> Unit
+    onRenew: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -555,6 +481,8 @@ private fun SubscriptionContent(
             }
             
             SubscriptionStatus.PENDING -> {
+                // Pending subscriptions should auto-activate via webhook
+                // Show message and refresh button
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -567,86 +495,32 @@ private fun SubscriptionContent(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "⚠️ Email Verification Required",
+                            text = "⏳ Payment Processing",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFFF9800)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Check your email for a verification code to activate your subscription. The code was sent when you created the subscription.",
+                            text = "Your payment is being processed. Your subscription will activate automatically once payment is confirmed.",
                             fontSize = 14.sp,
                             color = TextSecondary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "💡 Tip: Check your spam/junk folder if you don't see the email.",
-                            fontSize = 12.sp,
-                            color = TextSecondary.copy(alpha = 0.8f),
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         )
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
-                // Enter Verification Code Button (Primary Action)
                 Button(
-                    onClick = onShowVerifyDialog,
+                    onClick = { viewModel.getSubscription() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent)
                 ) {
-                    Icon(Icons.Default.CheckCircle, "Verify")
+                    Icon(Icons.Default.Refresh, "Refresh")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Enter Verification Code", fontSize = 16.sp)
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Resend Code Button (Secondary Action)
-                OutlinedButton(
-                    onClick = {
-                        viewModel.resendVerificationCode()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OrangeAccent)
-                ) {
-                    Icon(Icons.Default.Send, "Resend")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Try Resend Code", fontSize = 16.sp)
-                }
-                
-                // Help Text
-                Spacer(modifier = Modifier.height(8.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    ) {
-                        Text(
-                            text = "ℹ️ Need Help?",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2196F3)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "If you didn't receive the code, check your spam/junk folder. The code was sent when you created the subscription. If you still can't find it, try entering any code you might have received, or contact support.",
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            lineHeight = 16.sp
-                        )
-                    }
+                    Text("Refresh Status", fontSize = 16.sp)
                 }
             }
             

@@ -131,11 +131,10 @@ fun JoinVetScreen(
         when (uiState) {
             is VetSitterUiState.Success -> {
                 val successState = uiState as VetSitterUiState.Success
-                if (successState.requiresVerification) {
-                    // Navigate to email verification
-                    navController.navigate("email_verification") {
-                        popUpTo("join_vet") { inclusive = true }
-                    }
+                // Profile created successfully - navigate to home
+                navController.navigate("home") {
+                    popUpTo("join_vet") { inclusive = true }
+                    launchSingleTop = true
                 }
             }
             else -> {}

@@ -48,7 +48,7 @@ data class Subscription(
 
     val isExpired: Boolean
         get() {
-            val endDate = parseDate(currentPeriodEnd) ?: return true
+            val endDate = parseDate(currentPeriodEnd) ?: return false // No date = not expired
             return endDate.before(Date())
         }
 

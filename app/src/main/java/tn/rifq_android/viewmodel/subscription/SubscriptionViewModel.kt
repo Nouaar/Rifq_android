@@ -23,7 +23,9 @@ import tn.rifq_android.data.model.auth.ResendVerificationRequest
  * - Cancel subscription
  * - Reactivate subscription
  * - Renew subscription
- * - Email verification
+ * 
+ * Note: Email verification is no longer required.
+ * Subscriptions activate automatically upon successful payment.
  */
 sealed class SubscriptionUiState {
     object Idle : SubscriptionUiState()
@@ -73,7 +75,7 @@ class SubscriptionViewModel(
 
     /**
      * Create a new subscription
-     * @param role "vet" or "sitter"
+     * @param role "vet", "sitter", or "premium" (role chosen later)
      */
     fun createSubscription(role: String) {
         viewModelScope.launch {
@@ -86,62 +88,15 @@ class SubscriptionViewModel(
                 if (response.clientSecret != null) {
                     _uiState.value = SubscriptionUiState.PaymentRequired(response.clientSecret)
                 } else {
-                    // Payment handled, subscription created
+                    // Test mode - subscription activated immediately
+                    // Navigate to manage subscription to choose role
                     _uiState.value = SubscriptionUiState.Success(
-                        response.message ?: "Subscription created! Check your email for verification code."
+                        response.message ?: "Subscription activated! Choose your professional role."
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = SubscriptionUiState.Error(
                     e.message ?: "Failed to create subscription"
-                )
-            }
-        }
-    }
-
-    /**
-     * Verify email with code
-     * Changes subscription status from "pending" to "active"
-     * Note: email parameter is for auth verification, subscription verification uses code only
-     */
-    fun verifyEmail(code: String, email: String = "") {
-        viewModelScope.launch {
-            _uiState.value = SubscriptionUiState.Loading
-            try {
-                val response = repository.verifyEmail(code)
-                if (response.success) {
-                    _subscription.value = response.subscription
-                    _uiState.value = SubscriptionUiState.Success(
-                        response.message ?: "Email verified! Your subscription is now active."
-                    )
-                } else {
-                    _uiState.value = SubscriptionUiState.Error(
-                        response.message ?: "Invalid verification code"
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.value = SubscriptionUiState.Error(
-                    e.message ?: "Failed to verify email"
-                )
-            }
-        }
-    }
-
-    /**
-     * Resend verification code for subscription activation
-     * Uses subscription-specific endpoint that works even if user is already verified
-     */
-    fun resendVerificationCode(email: String = "") {
-        viewModelScope.launch {
-            _uiState.value = SubscriptionUiState.Loading
-            try {
-                val response = repository.resendVerificationCode()
-                _uiState.value = SubscriptionUiState.Success(
-                    response.message ?: "Verification code sent to your email."
-                )
-            } catch (e: Exception) {
-                _uiState.value = SubscriptionUiState.Error(
-                    e.message ?: "Failed to resend verification code. Please try again."
                 )
             }
         }

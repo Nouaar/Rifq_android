@@ -16,6 +16,7 @@ data class User(
     val hasPets: Boolean? = null,
     val balance: Double? = null,
     val isVerified: Boolean? = null,
+    val hasActiveSubscription: Boolean? = null,
     val provider: String? = "local", // "local" or "google"
     val providerId: String? = null
 )

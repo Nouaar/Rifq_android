@@ -9,6 +9,10 @@ object Constants {
         const val TIMEOUT_SECONDS = 30L
     }
 
+    object Stripe {
+        const val PUBLISHABLE_KEY = "pk_test_51SWoRFK6f2Usc2LwQSOruB63GGE3lp85D6sZK9eMPpxgF8Y6ZuCb9ZLyGK9Jrzn026ncZnqxN1W5eXqwaC6qtFHQ00sxHei5uB"
+    }
+
     object Splash {
         const val DELAY_MS = 2500L
         const val LOGO_SIZE_DP = 120
