@@ -19,7 +19,7 @@ import tn.rifq_android.data.storage.TokenManager
 import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    private const val BASE_URL = "https://rifq.onrender.com/"
 
     private var tokenManager: TokenManager? = null
     
