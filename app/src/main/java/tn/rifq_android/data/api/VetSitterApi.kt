@@ -30,7 +30,7 @@ interface VetSitterApi {
     suspend fun getAllVets(): List<AppUser>
 
     @GET("veterinarians/{vetId}")
-    suspend fun getVet(@Path("vetId") vetId: String): AppUser
+    suspend fun getVet(@Path("vetId") vetId: String): Response<AppUser>
 
 
 
@@ -55,5 +55,5 @@ interface VetSitterApi {
     suspend fun getAllSitters(): List<AppUser>
 
     @GET("pet-sitters/{sitterId}")
-    suspend fun getSitter(@Path("sitterId") sitterId: String): AppUser
+    suspend fun getSitter(@Path("sitterId") sitterId: String): Response<AppUser>
 }

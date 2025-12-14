@@ -56,6 +56,20 @@ interface SubscriptionApi {
     suspend fun renewSubscription(): Subscription
     
     /**
+     * Update subscription role (vet or sitter)
+     * Used when user pays first, then chooses their professional role
+     */
+    @POST("/subscriptions/update-role")
+    suspend fun updateSubscriptionRole(@Body request: UpdateRoleRequest): Subscription
+    
+    /**
+     * Manually activate pending subscription (for testing)
+     * Used when webhook doesn't fire automatically
+     */
+    @POST("/subscriptions/activate-pending")
+    suspend fun activatePendingSubscription(): Subscription
+    
+    /**
      * Verify email with code (after subscription creation)
      * Changes subscription status from "pending" to "active"
      */

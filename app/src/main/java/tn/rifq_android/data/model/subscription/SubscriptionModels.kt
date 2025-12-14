@@ -90,6 +90,12 @@ data class CreateSubscriptionRequest(
     val paymentMethodId: String? = null // Stripe payment method ID (optional for test mode)
 )
 
+// MARK: - Update Role Request
+@JsonClass(generateAdapter = true)
+data class UpdateRoleRequest(
+    val role: String // "vet" or "sitter"
+)
+
 // MARK: - Subscription Response
 @JsonClass(generateAdapter = true)
 data class SubscriptionResponse(

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
@@ -363,7 +364,7 @@ private fun SubscriptionContent(
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
-                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
                 
                 DetailRow(
                     label = "Plan",
@@ -403,6 +404,26 @@ private fun SubscriptionContent(
         // Actions
         when (subscription.subscriptionStatus) {
             SubscriptionStatus.ACTIVE -> {
+                // Edit Professional Profile Button
+                if (subscription.role == "vet" || subscription.role == "sitter") {
+                    Button(
+                        onClick = {
+                            val route = if (subscription.role == "vet") "edit_vet_profile" else "edit_sitter_profile"
+                            navController.navigate(route)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent)
+                    ) {
+                        Icon(Icons.Default.Edit, "Edit Profile")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Edit ${subscription.role.replaceFirstChar { it.uppercase() }} Profile", fontSize = 16.sp)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
                 if (subscription.willExpireSoon) {
                     Button(
                         onClick = onRenew,
@@ -415,6 +436,7 @@ private fun SubscriptionContent(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Renew Subscription", fontSize = 16.sp)
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
                 
                 OutlinedButton(
@@ -431,23 +453,49 @@ private fun SubscriptionContent(
             }
             
             SubscriptionStatus.CANCELED -> {
-                // Reactivate button
-                Button(
-                    onClick = onReactivate,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                // Canceled subscriptions cannot be reactivated, only re-subscribed
+                // Show message and subscribe again button
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.Red.copy(alpha = 0.1f)
+                    )
                 ) {
-                    Icon(Icons.Default.CheckCircle, "Reactivate")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Reactivate Subscription", fontSize = 16.sp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                "Info",
+                                tint = Color.Red,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Subscription Canceled",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Red
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "This subscription has been permanently canceled. To become a professional again, you'll need to subscribe and set up a new profile.",
+                            fontSize = 14.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Subscribe Again button
-                OutlinedButton(
+                Button(
                     onClick = {
                         // Navigate to join subscription screen to choose vet or sitter
                         navController.navigate("join_vet_sitter") {
@@ -457,8 +505,7 @@ private fun SubscriptionContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OrangeAccent),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, OrangeAccent)
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent)
                 ) {
                     Icon(Icons.Default.Add, "Subscribe Again")
                     Spacer(modifier = Modifier.width(8.dp))
@@ -510,6 +557,21 @@ private fun SubscriptionContent(
                 }
                 
                 Spacer(modifier = Modifier.height(12.dp))
+                
+                // Manual activation button (for testing when webhook doesn't fire)
+                Button(
+                    onClick = { viewModel.activatePendingSubscription() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Icon(Icons.Default.CheckCircle, "Activate")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Activate Now (Manual)", fontSize = 16.sp)
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
                 
                 Button(
                     onClick = { viewModel.getSubscription() },

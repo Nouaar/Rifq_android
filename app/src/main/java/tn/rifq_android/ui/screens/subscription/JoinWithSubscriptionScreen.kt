@@ -27,6 +27,7 @@ import androidx.navigation.NavHostController
 import com.stripe.android.paymentsheet.PaymentSheet
 import com.stripe.android.paymentsheet.PaymentSheetResult
 import com.stripe.android.paymentsheet.rememberPaymentSheet
+import tn.rifq_android.data.model.subscription.SubscriptionStatus
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
 import tn.rifq_android.viewmodel.subscription.SubscriptionUiState
@@ -55,6 +56,12 @@ fun JoinWithSubscriptionScreen(
     var showConfirmDialog by remember { mutableStateOf(false) }
     
     val uiState by viewModel.uiState.collectAsState()
+    val subscription by viewModel.subscription.collectAsState()
+    
+    // Load subscription on start to check if user already has one
+    LaunchedEffect(Unit) {
+        viewModel.getSubscription()
+    }
     
     // Initialize Stripe PaymentSheet (must be at composable scope level)
     val paymentSheet = rememberPaymentSheet { result ->
@@ -81,7 +88,7 @@ fun JoinWithSubscriptionScreen(
         }
     }
     
-    // Handle payment required
+    // Handle UI state changes
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is SubscriptionUiState.PaymentRequired -> {
@@ -107,32 +114,59 @@ fun JoinWithSubscriptionScreen(
                 }
                 viewModel.resetUiState()
             }
+            is SubscriptionUiState.RoleUpdated -> {
+                // Role updated successfully, navigate to profile form
+                val destination = when (state.role) {
+                    "vet" -> "join_vet"
+                    "sitter" -> "join_sitter"
+                    else -> "profile"
+                }
+                navController.navigate(destination) {
+                    popUpTo("join_vet_sitter") { inclusive = true }
+                }
+                viewModel.resetUiState()
+            }
             else -> {}
         }
     }
     
     // Confirm dialogsuccessful payment, your subscription will be activated automatically and you can set up your professional profile
     if (showConfirmDialog && selectedRole != null) {
+        // Check if user already has an active subscription (from recent payment)
+        val hasActiveSubscription = subscription?.subscriptionStatus == SubscriptionStatus.ACTIVE
+        
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Confirm Subscription") },
+            title = { Text(if (hasActiveSubscription) "Choose Your Role" else "Confirm Subscription") },
             text = {
                 Column {
-                    Text("You're about to subscribe as a ${selectedRole!!.replaceFirstChar { it.uppercase() }}.")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Price: $${SubscriptionViewModel.SUBSCRIPTION_PRICE}/month")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("After payment, you'll receive a verification code via email to activate your subscription.")
+                    if (hasActiveSubscription) {
+                        Text("You already have an active subscription. Choose your professional role to continue:")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Role: ${selectedRole!!.replaceFirstChar { it.uppercase() }}")
+                    } else {
+                        Text("You're about to subscribe as a ${selectedRole!!.replaceFirstChar { it.uppercase() }}.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Price: $${SubscriptionViewModel.SUBSCRIPTION_PRICE}/month")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("After payment, you'll be able to set up your professional profile.")
+                    }
                 }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.createSubscription(selectedRole!!)
+                        if (hasActiveSubscription) {
+                            // Update role of existing subscription
+                            viewModel.updateSubscriptionRole(selectedRole!!)
+                        } else {
+                            // Create new subscription
+                            viewModel.createSubscription(selectedRole!!)
+                        }
                         showConfirmDialog = false
                     }
                 ) {
-                    Text("Subscribe", color = OrangeAccent)
+                    Text(if (hasActiveSubscription) "Continue" else "Subscribe", color = OrangeAccent)
                 }
             },
             dismissButton = {

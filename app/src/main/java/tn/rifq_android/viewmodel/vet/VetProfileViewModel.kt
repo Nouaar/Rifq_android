@@ -30,8 +30,12 @@ class VetProfileViewModel : ViewModel() {
             _error.value = null
 
             try {
-                val vetData = vetSitterApi.getVet(vetId)
-                _vet.value = vetData
+                val response = vetSitterApi.getVet(vetId)
+                if (response.isSuccessful) {
+                    _vet.value = response.body()
+                } else {
+                    _error.value = "Failed to load vet profile: ${response.message()}"
+                }
             } catch (e: Exception) {
                 _error.value = e.localizedMessage ?: "Failed to load vet profile"
                 println("❌ Failed to load vet profile: $e")

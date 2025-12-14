@@ -48,7 +48,8 @@ fun SubscriptionBenefitsScreen(
         when (result) {
             is PaymentSheetResult.Completed -> {
                 // Payment successful - subscription activated automatically via webhook
-                navController.navigate("manage_subscription") {
+                // Navigate to subscription_management to activate and choose role
+                navController.navigate("subscription_management") {
                     popUpTo("subscription_benefits") { inclusive = true }
                 }
                 viewModel.resetUiState()
@@ -77,8 +78,8 @@ fun SubscriptionBenefitsScreen(
             }
             is SubscriptionUiState.Success -> {
                 // Test mode - subscription activated immediately
-                // Navigate to manage subscription to choose role
-                navController.navigate("manage_subscription") {
+                // Navigate to subscription_management to activate and choose role
+                navController.navigate("subscription_management") {
                     popUpTo("subscription_benefits") { inclusive = true }
                 }
                 viewModel.resetUiState()

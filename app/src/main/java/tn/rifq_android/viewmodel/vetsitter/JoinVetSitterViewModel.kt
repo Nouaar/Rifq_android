@@ -17,6 +17,8 @@ sealed class VetSitterUiState {
     object Idle : VetSitterUiState()
     object Loading : VetSitterUiState()
     data class Success(val user: AppUser, val message: String, val requiresVerification: Boolean = false) : VetSitterUiState()
+    data class VetProfileLoaded(val vet: AppUser) : VetSitterUiState()
+    data class SitterProfileLoaded(val sitter: AppUser) : VetSitterUiState()
     data class Error(val message: String) : VetSitterUiState()
 }
 
@@ -293,5 +295,201 @@ class JoinVetSitterViewModel(
 
     fun resetState() {
         _uiState.value = VetSitterUiState.Idle
+    }
+    
+    /**
+     * Fetch vet profile for editing
+     */
+    fun fetchVetProfile() {
+        viewModelScope.launch {
+            _uiState.value = VetSitterUiState.Loading
+            try {
+                val token = tokenManager.getAccessToken().firstOrNull()
+                if (token.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Not logged in")
+                    return@launch
+                }
+                
+                val userId = JwtDecoder.getUserIdFromToken(token)
+                if (userId.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Invalid session")
+                    return@launch
+                }
+                
+                val response = api.getVet(userId)
+                if (response.isSuccessful) {
+                    val vet = response.body()
+                    if (vet != null) {
+                        _uiState.value = VetSitterUiState.VetProfileLoaded(vet)
+                    } else {
+                        _uiState.value = VetSitterUiState.Error("Vet profile not found")
+                    }
+                } else {
+                    _uiState.value = VetSitterUiState.Error("Failed to load vet profile")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching vet profile", e)
+                _uiState.value = VetSitterUiState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+    
+    /**
+     * Fetch sitter profile for editing
+     */
+    fun fetchSitterProfile() {
+        viewModelScope.launch {
+            _uiState.value = VetSitterUiState.Loading
+            try {
+                val token = tokenManager.getAccessToken().firstOrNull()
+                if (token.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Not logged in")
+                    return@launch
+                }
+                
+                val userId = JwtDecoder.getUserIdFromToken(token)
+                if (userId.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Invalid session")
+                    return@launch
+                }
+                
+                val response = api.getSitter(userId)
+                if (response.isSuccessful) {
+                    val sitter = response.body()
+                    if (sitter != null) {
+                        _uiState.value = VetSitterUiState.SitterProfileLoaded(sitter)
+                    } else {
+                        _uiState.value = VetSitterUiState.Error("Sitter profile not found")
+                    }
+                } else {
+                    _uiState.value = VetSitterUiState.Error("Failed to load sitter profile")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching sitter profile", e)
+                _uiState.value = VetSitterUiState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+    
+    /**
+     * Update vet profile
+     */
+    fun updateVetProfile(
+        licenseNumber: String,
+        clinicName: String,
+        phone: String,
+        clinicAddress: String,
+        yearsOfExperience: Int?,
+        specialties: List<String>,
+        bio: String,
+        latitude: Double?,
+        longitude: Double?
+    ) {
+        viewModelScope.launch {
+            _uiState.value = VetSitterUiState.Loading
+            try {
+                val token = tokenManager.getAccessToken().firstOrNull()
+                if (token.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Not logged in")
+                    return@launch
+                }
+                
+                val userId = JwtDecoder.getUserIdFromToken(token)
+                if (userId.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Invalid session")
+                    return@launch
+                }
+                
+                val updateRequest = UpdateVetRequest(
+                    licenseNumber = licenseNumber.trim().ifEmpty { null },
+                    clinicName = clinicName.trim().ifEmpty { null },
+                    phoneNumber = phone.trim().ifEmpty { null },
+                    clinicAddress = clinicAddress.trim().ifEmpty { null },
+                    yearsOfExperience = yearsOfExperience,
+                    specializations = specialties.ifEmpty { null },
+                    bio = bio.trim().ifEmpty { null },
+                    latitude = latitude,
+                    longitude = longitude
+                )
+                
+                val response = api.updateVet(userId, updateRequest)
+                if (response.isSuccessful) {
+                    val updatedVet = response.body()
+                    if (updatedVet != null) {
+                        _uiState.value = VetSitterUiState.Success(
+                            updatedVet,
+                            "Profile updated successfully"
+                        )
+                    } else {
+                        _uiState.value = VetSitterUiState.Error("No response from server")
+                    }
+                } else {
+                    _uiState.value = VetSitterUiState.Error("Failed to update profile")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating vet profile", e)
+                _uiState.value = VetSitterUiState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+    
+    /**
+     * Update sitter profile
+     */
+    fun updateSitterProfile(
+        phone: String,
+        sitterAddress: String,
+        yearsOfExperience: Int?,
+        bio: String,
+        hourlyRate: Double?,
+        canHostPets: Boolean,
+        latitude: Double?,
+        longitude: Double?
+    ) {
+        viewModelScope.launch {
+            _uiState.value = VetSitterUiState.Loading
+            try {
+                val token = tokenManager.getAccessToken().firstOrNull()
+                if (token.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Not logged in")
+                    return@launch
+                }
+                
+                val userId = JwtDecoder.getUserIdFromToken(token)
+                if (userId.isNullOrEmpty()) {
+                    _uiState.value = VetSitterUiState.Error("Invalid session")
+                    return@launch
+                }
+                
+                val updateRequest = UpdateSitterRequest(
+                    phoneNumber = phone.trim().ifEmpty { null },
+                    sitterAddress = sitterAddress.trim().ifEmpty { null },
+                    yearsOfExperience = yearsOfExperience,
+                    bio = bio.trim().ifEmpty { null },
+                    hourlyRate = hourlyRate,
+                    canHostPets = canHostPets,
+                    latitude = latitude,
+                    longitude = longitude
+                )
+                
+                val response = api.updateSitter(userId, updateRequest)
+                if (response.isSuccessful) {
+                    val updatedSitter = response.body()
+                    if (updatedSitter != null) {
+                        _uiState.value = VetSitterUiState.Success(
+                            updatedSitter,
+                            "Profile updated successfully"
+                        )
+                    } else {
+                        _uiState.value = VetSitterUiState.Error("No response from server")
+                    }
+                } else {
+                    _uiState.value = VetSitterUiState.Error("Failed to update profile")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating sitter profile", e)
+                _uiState.value = VetSitterUiState.Error(e.message ?: "Network error")
+            }
+        }
     }
 }

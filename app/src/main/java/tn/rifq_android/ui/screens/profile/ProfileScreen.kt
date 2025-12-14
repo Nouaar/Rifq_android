@@ -354,7 +354,7 @@ fun ProfileScreen(
                     // Subscribe Now / Manage Subscription Button
                     if (hasSubscription) {
                         Button(
-                            onClick = { navController.navigate("manage_subscription") },
+                            onClick = { navController.navigate("subscription_management") },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()

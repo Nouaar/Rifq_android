@@ -80,6 +80,24 @@ class SubscriptionRepository(private val api: SubscriptionApi) {
     }
     
     /**
+     * Update subscription role after payment
+     * Used when user subscribes first, then chooses vet or sitter
+     * @param role "vet" or "sitter"
+     * @return Updated subscription with new role
+     */
+    suspend fun updateSubscriptionRole(role: String): Subscription {
+        return api.updateSubscriptionRole(UpdateRoleRequest(role = role))
+    }
+    
+    /**
+     * Manually activate pending subscription (for testing)
+     * Used when webhook doesn't fire automatically
+     */
+    suspend fun activatePendingSubscription(): Subscription {
+        return api.activatePendingSubscription()
+    }
+    
+    /**
      * Verify email with code sent to user's email
      * Changes subscription status from "pending" to "active"
      * @param code Email verification code

@@ -33,6 +33,7 @@ sealed class SubscriptionUiState {
     data class Success(val message: String? = null) : SubscriptionUiState()
     data class Error(val message: String) : SubscriptionUiState()
     data class PaymentRequired(val clientSecret: String) : SubscriptionUiState()
+    data class RoleUpdated(val role: String) : SubscriptionUiState()
 }
 
 class SubscriptionViewModel(
@@ -65,7 +66,7 @@ class SubscriptionViewModel(
             try {
                 val sub = repository.getSubscription()
                 _subscription.value = sub
-                _uiState.value = SubscriptionUiState.Success()
+                _uiState.value = SubscriptionUiState.Idle // Changed from Success() to Idle
                 checkForAlerts(sub)
             } catch (e: Exception) {
                 _uiState.value = SubscriptionUiState.Error(e.message ?: "Failed to load subscription")
@@ -155,6 +156,43 @@ class SubscriptionViewModel(
             } catch (e: Exception) {
                 _uiState.value = SubscriptionUiState.Error(
                     e.message ?: "Failed to renew subscription"
+                )
+            }
+        }
+    }
+
+    /**
+     * Update subscription role (vet or sitter)
+     * Used when user pays first, then chooses their professional role
+     */
+    fun updateSubscriptionRole(role: String) {
+        viewModelScope.launch {
+            _uiState.value = SubscriptionUiState.Loading
+            try {
+                val sub = repository.updateSubscriptionRole(role)
+                _subscription.value = sub
+                _uiState.value = SubscriptionUiState.RoleUpdated(role)
+            } catch (e: Exception) {
+                _uiState.value = SubscriptionUiState.Error(
+                    e.message ?: "Failed to update role"
+                )
+            }
+        }
+    }
+
+    /**
+     * Manually activate pending subscription (for testing when webhook doesn't fire)
+     */
+    fun activatePendingSubscription() {
+        viewModelScope.launch {
+            _uiState.value = SubscriptionUiState.Loading
+            try {
+                val sub = repository.activatePendingSubscription()
+                _subscription.value = sub
+                _uiState.value = SubscriptionUiState.Success("Subscription activated!")
+            } catch (e: Exception) {
+                _uiState.value = SubscriptionUiState.Error(
+                    e.message ?: "Failed to activate subscription"
                 )
             }
         }

@@ -342,6 +342,18 @@ fun MainScreen(
                     fromSubscription = true // Always true when coming from subscription flow
                 )
             }
+            
+            composable("edit_vet_profile") {
+                tn.rifq_android.ui.screens.profile.EditVetProfileScreen(
+                    navController = navController
+                )
+            }
+            
+            composable("edit_sitter_profile") {
+                tn.rifq_android.ui.screens.profile.EditSitterProfileScreen(
+                    navController = navController
+                )
+            }
 
             composable("add_pet") {
                 AddPetFlowScreen(navController = navController)
@@ -625,12 +637,6 @@ fun MainScreen(
             // New Subscription Flow
             composable("subscription_benefits") {
                 tn.rifq_android.ui.screens.subscription.SubscriptionBenefitsScreen(
-                    navController = navController
-                )
-            }
-            
-            composable("manage_subscription") {
-                tn.rifq_android.ui.screens.subscription.ManageSubscriptionScreen(
                     navController = navController
                 )
             }

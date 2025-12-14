@@ -30,8 +30,12 @@ class SitterProfileViewModel : ViewModel() {
             _error.value = null
 
             try {
-                val sitterData = vetSitterApi.getSitter(sitterId)
-                _sitter.value = sitterData
+                val response = vetSitterApi.getSitter(sitterId)
+                if (response.isSuccessful) {
+                    _sitter.value = response.body()
+                } else {
+                    _error.value = "Failed to load sitter profile: ${response.message()}"
+                }
             } catch (e: Exception) {
                 _error.value = e.localizedMessage ?: "Failed to load sitter profile"
                 println("❌ Failed to load sitter profile: $e")
