@@ -558,21 +558,7 @@ private fun SubscriptionContent(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Manual activation button (for testing when webhook doesn't fire)
-                Button(
-                    onClick = { viewModel.activatePendingSubscription() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                ) {
-                    Icon(Icons.Default.CheckCircle, "Activate")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Activate Now (Manual)", fontSize = 16.sp)
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
+                // Refresh button to check if webhook has activated the subscription
                 Button(
                     onClick = { viewModel.getSubscription() },
                     modifier = Modifier

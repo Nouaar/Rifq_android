@@ -55,7 +55,9 @@ fun SubscriptionBenefitsScreen(
                 viewModel.resetUiState()
             }
             is PaymentSheetResult.Canceled -> {
-                viewModel.setError("Payment cancelled")
+                // Payment was cancelled - subscription remains pending
+                // User can try again or will see manual activation option
+                viewModel.setError("Payment cancelled. You can try again or the subscription will remain pending.")
             }
             is PaymentSheetResult.Failed -> {
                 viewModel.setError(result.error.message ?: "Payment failed. Please try again.")
