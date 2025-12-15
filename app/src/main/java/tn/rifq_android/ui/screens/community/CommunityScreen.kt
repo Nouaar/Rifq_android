@@ -84,6 +84,7 @@ fun CommunityScreen(
                     navController = navController,
                     showBackButton = false,
                     showMenuButton = true,
+                    onSettingsClick = { navController.navigate("profile") },
                     actions = {
                         IconButton(onClick = { 
                             if (selectedTab == 0) {
@@ -172,6 +173,7 @@ fun CommunityScreen(
                             }
                         },
                         onDeleteClick = { viewModel.deletePost(post.id) },
+                        onReportClick = { viewModel.reportPost(post.id) },
                         onAddComment = { text ->
                             viewModel.addComment(post.id, text)
                         },
@@ -256,6 +258,7 @@ fun PostCard(
     onReactionClick: (ReactionType) -> Unit,
     onUserClick: (String) -> Unit,
     onDeleteClick: () -> Unit,
+    onReportClick: () -> Unit,
     onAddComment: (String) -> Unit,
     onDeleteComment: (String) -> Unit,
     showDeleteButton: Boolean = false
@@ -305,11 +308,30 @@ fun PostCard(
                         .weight(1f)
                         .clickable { onUserClick(post.userId) }
                 ) {
-                    Text(
-                        text = post.userName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = post.userName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        post.userRole?.let { role ->
+                            when (role) {
+                                "veterinarian" -> Text(
+                                    text = " • Vet",
+                                    fontSize = 14.sp,
+                                    color = VetCanyon,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                "pet-sitter" -> Text(
+                                    text = " • Sitter",
+                                    fontSize = 14.sp,
+                                    color = VetCanyon,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                // Don't show badge for "owner" role
+                            }
+                        }
+                    }
                     Text(
                         text = formatTimeAgo(post.createdAt),
                         fontSize = 12.sp,
@@ -317,13 +339,27 @@ fun PostCard(
                     )
                 }
                 
-                if (showDeleteButton) {
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete post",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (showDeleteButton) {
+                        IconButton(onClick = onDeleteClick) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete post",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    
+                    // Show report button for posts that aren't the current user's
+                    if (!showDeleteButton && currentUserId != null) {
+                        IconButton(onClick = onReportClick) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = "Report post",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -405,7 +441,7 @@ fun PostCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            Icons.Default.Comment,
+                            Icons.Default.Edit,
                             contentDescription = "Comment",
                             modifier = Modifier.size(20.dp)
                         )
@@ -545,7 +581,7 @@ fun CommentItem(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
                 Text(
-                    text = formatTimestamp(comment.createdAt),
+                    text = formatTimeAgo(comment.createdAt),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )

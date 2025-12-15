@@ -17,6 +17,7 @@ data class Post(
     val userId: String,
     val userName: String,
     val userProfileImage: String? = null,
+    val userRole: String? = null,
     val petImage: String,
     val caption: String? = null,
     val createdAt: String,
@@ -63,7 +64,10 @@ data class AddCommentResponse(
     val message: String,
     val post: Post
 )
-
+data class ReportPostResponse(
+    val message: String,
+    val deleted: Boolean = false
+)
 enum class ReactionType(val value: String, val emoji: String) {
     LIKE("like", "👍"),
     LOVE("love", "❤️"),

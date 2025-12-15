@@ -53,4 +53,7 @@ interface CommunityApi {
         @Path("postId") postId: String,
         @Path("commentId") commentId: String
     ): Response<AddCommentResponse>
-}
+    @POST("community/posts/{postId}/report")
+    suspend fun reportPost(
+        @Path("postId") postId: String
+    ): Response<ReportPostResponse>}

@@ -60,7 +60,10 @@ class CommunityViewModel : ViewModel() {
                         if (refresh) {
                             _posts.value = it.posts
                         } else {
-                            _posts.value = _posts.value + it.posts
+                            // Filter out duplicates by ID
+                            val existingIds = _posts.value.map { post -> post.id }.toSet()
+                            val newPosts = it.posts.filter { post -> !existingIds.contains(post.id) }
+                            _posts.value = _posts.value + newPosts
                         }
                         hasMorePages = currentPage < it.totalPages
                     }
@@ -199,7 +202,10 @@ class CommunityViewModel : ViewModel() {
                         if (refresh) {
                             _posts.value = data.posts
                         } else {
-                            _posts.value = _posts.value + data.posts
+                            // Filter out duplicates by ID
+                            val existingIds = _posts.value.map { post -> post.id }.toSet()
+                            val newPosts = data.posts.filter { post -> !existingIds.contains(post.id) }
+                            _posts.value = _posts.value + newPosts
                         }
                         
                         hasMorePages = currentPage < data.totalPages
@@ -264,6 +270,29 @@ class CommunityViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to delete comment"
+            }
+        }
+    }
+    
+    fun reportPost(postId: String) {
+        viewModelScope.launch {
+            try {
+                val response = communityApi.reportPost(postId)
+                
+                if (response.isSuccessful) {
+                    response.body()?.let { reportResponse ->
+                        if (reportResponse.deleted) {
+                            // Remove post from list if it was deleted
+                            _posts.value = _posts.value.filter { it.id != postId }
+                        }
+                        _error.value = reportResponse.message
+                    }
+                } else {
+                    val errorMsg = response.errorBody()?.string() ?: response.message()
+                    _error.value = "Failed to report post: $errorMsg"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to report post"
             }
         }
     }
