@@ -519,11 +519,26 @@ fun CommentItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             Column {
-                Text(
-                    text = comment.userName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = comment.userName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    comment.userRole?.let { role ->
+                        if (role == "vet" || role == "sitter") {
+                            Text(
+                                text = "• ${if (role == "vet") "Vet" else "Sitter"}",
+                                fontSize = 12.sp,
+                                color = VetCanyon,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = comment.text,
                     fontSize = 14.sp,
