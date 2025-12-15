@@ -222,4 +222,49 @@ class CommunityViewModel : ViewModel() {
             loadMyPosts()
         }
     }
+    
+    fun addComment(postId: String, text: String) {
+        viewModelScope.launch {
+            try {
+                val response = communityApi.addComment(
+                    postId,
+                    AddCommentRequest(text)
+                )
+                
+                if (response.isSuccessful) {
+                    response.body()?.let { commentResponse ->
+                        // Update the post in the list with new comment
+                        _posts.value = _posts.value.map {
+                            if (it.id == postId) commentResponse.post else it
+                        }
+                    }
+                } else {
+                    _error.value = "Failed to add comment: ${response.message()}"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to add comment"
+            }
+        }
+    }
+    
+    fun deleteComment(postId: String, commentId: String) {
+        viewModelScope.launch {
+            try {
+                val response = communityApi.deleteComment(postId, commentId)
+                
+                if (response.isSuccessful) {
+                    response.body()?.let { commentResponse ->
+                        // Update the post in the list with comment removed
+                        _posts.value = _posts.value.map {
+                            if (it.id == postId) commentResponse.post else it
+                        }
+                    }
+                } else {
+                    _error.value = "Failed to delete comment: ${response.message()}"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to delete comment"
+            }
+        }
+    }
 }

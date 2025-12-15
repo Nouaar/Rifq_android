@@ -34,6 +34,7 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import tn.rifq_android.data.model.community.Comment
 import tn.rifq_android.data.model.community.Post
 import tn.rifq_android.data.model.community.ReactionType
 import tn.rifq_android.ui.theme.*
@@ -158,6 +159,7 @@ fun CommunityScreen(
                 items(posts, key = { it.id }) { post ->
                     PostCard(
                         post = post,
+                        currentUserId = currentUserId,
                         onReactionClick = { reactionType ->
                             viewModel.reactToPost(post.id, reactionType)
                         },
@@ -170,6 +172,12 @@ fun CommunityScreen(
                             }
                         },
                         onDeleteClick = { viewModel.deletePost(post.id) },
+                        onAddComment = { text ->
+                            viewModel.addComment(post.id, text)
+                        },
+                        onDeleteComment = { commentId ->
+                            viewModel.deleteComment(post.id, commentId)
+                        },
                         showDeleteButton = post.userId == currentUserId
                     )
                 }
@@ -244,12 +252,17 @@ fun CommunityScreen(
 @Composable
 fun PostCard(
     post: Post,
+    currentUserId: String?,
     onReactionClick: (ReactionType) -> Unit,
     onUserClick: (String) -> Unit,
     onDeleteClick: () -> Unit,
+    onAddComment: (String) -> Unit,
+    onDeleteComment: (String) -> Unit,
     showDeleteButton: Boolean = false
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
+    var showComments by remember { mutableStateOf(false) }
+    var commentText by remember { mutableStateOf("") }
     
     Card(
         modifier = Modifier
@@ -386,6 +399,22 @@ fun PostCard(
                         onClick = { showReactionPicker = !showReactionPicker },
                         modifier = Modifier.weight(1f)
                     )
+                    
+                    TextButton(
+                        onClick = { showComments = !showComments },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Default.Comment,
+                            contentDescription = "Comment",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (post.comments.isNotEmpty()) "Comments (${post.comments.size})" else "Comment",
+                            fontSize = 14.sp
+                        )
+                    }
                 }
                 
                 // Reaction picker popup
@@ -398,6 +427,124 @@ fun PostCard(
                         onDismiss = { showReactionPicker = false }
                     )
                 }
+            }
+            
+            // Comments section
+            if (showComments) {
+                Divider()
+                
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    // Comments list
+                    post.comments.forEach { comment ->
+                        CommentItem(
+                            comment = comment,
+                            currentUserId = currentUserId,
+                            onDeleteClick = { onDeleteComment(comment.id) },
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                    
+                    // Add comment input
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = commentText,
+                            onValueChange = { commentText = it },
+                            placeholder = { Text("Write a comment...") },
+                            modifier = Modifier.weight(1f),
+                            maxLines = 3,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        IconButton(
+                            onClick = {
+                                if (commentText.isNotBlank()) {
+                                    onAddComment(commentText)
+                                    commentText = ""
+                                }
+                            },
+                            enabled = commentText.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.Default.Send,
+                                contentDescription = "Send",
+                                tint = if (commentText.isNotBlank()) VetCanyon else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CommentItem(
+    comment: Comment,
+    currentUserId: String?,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.Top
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(comment.userProfileImage ?: "https://via.placeholder.com/150")
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Commenter avatar",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(VetCanyon.copy(alpha = 0.2f)),
+                contentScale = ContentScale.Crop
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Column {
+                Text(
+                    text = comment.userName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = comment.text,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+                Text(
+                    text = formatTimestamp(comment.createdAt),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+        }
+        
+        if (comment.userId == currentUserId) {
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete comment",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
