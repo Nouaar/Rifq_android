@@ -1,5 +1,10 @@
 package tn.rifq_android.ui.screens.chat
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -16,17 +21,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tn.rifq_android.data.model.chat.Message
+import tn.rifq_android.ui.components.AudioMessageBubble
 import tn.rifq_android.ui.components.TopNavBar
 import tn.rifq_android.ui.theme.*
+import tn.rifq_android.util.AudioRecorder
 import tn.rifq_android.viewmodel.chat.ChatViewModel
+import java.io.File
 
 /**
  * ChatViewScreen matching iOS ChatView
@@ -43,9 +55,80 @@ fun ChatViewScreen(
     conversationId: String? = null,
     viewModel: ChatViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Audio recording state
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingTime by remember { mutableStateOf(0) }
+    val audioRecorder = remember { AudioRecorder(context) }
+    var audioFile by remember { mutableStateOf<File?>(null) }
+    var hasAudioPermission by remember { 
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    
+    var messageText by remember { mutableStateOf("") }
+    var editingMessageId by remember { mutableStateOf<String?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var actualConversationId by remember { mutableStateOf(conversationId) }
+    
+    val listState = rememberLazyListState()
+    
+    // Function definitions
+    fun startRecording() {
+        audioFile = audioRecorder.startRecording()
+        if (audioFile != null) {
+            isRecording = true
+        }
+    }
+    
+    fun stopRecording() {
+        val file = audioRecorder.stopRecording()
+        isRecording = false
+        recordingTime = 0
+        if (file != null && file.exists()) {
+            // Upload audio message
+            coroutineScope.launch {
+                viewModel.uploadAudioMessage(recipientId, actualConversationId, file)
+            }
+        }
+        audioFile = null
+    }
+    
+    fun cancelRecording() {
+        audioRecorder.cancelRecording()
+        isRecording = false
+        recordingTime = 0
+        audioFile = null
+    }
+    
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasAudioPermission = isGranted
+        if (isGranted && !isRecording) {
+            startRecording()
+        }
+    }
+    
+    // Recording timer
+    LaunchedEffect(isRecording) {
+        recordingTime = 0
+        while (isRecording) {
+            delay(1000)
+            recordingTime++
+        }
+    }
     
     // Log for debugging
     LaunchedEffect(error) {
@@ -57,14 +140,7 @@ fun ChatViewScreen(
     LaunchedEffect(messages.size) {
         android.util.Log.d("ChatViewScreen", "Messages count: ${messages.size}")
     }
-    
-    var messageText by remember { mutableStateOf("") }
-    var editingMessageId by remember { mutableStateOf<String?>(null) }
-    var showEditDialog by remember { mutableStateOf(false) }
-    var actualConversationId by remember { mutableStateOf(conversationId) }
-    
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
+
     
     // iOS: onAppear - get or create conversation, then ALWAYS load messages
     LaunchedEffect(conversationId, recipientId) {
@@ -142,20 +218,51 @@ fun ChatViewScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(messages) { message ->
-                                MessageBubble(
-                                    message = message,
-                                    isFromCurrentUser = message.normalizedSenderId == currentUserId,
-                                    onEdit = {
-                                        editingMessageId = message.normalizedId
-                                        messageText = message.content
-                                        showEditDialog = true
-                                    },
-                                    onDelete = {
-                                        coroutineScope.launch {
-                                            viewModel.deleteMessage(message.normalizedId)
-                                        }
+                                // Check for audio message
+                                if (message.audioURL != null && message.audioURL.isNotBlank()) {
+                                    AudioMessageBubble(
+                                        audioURL = message.audioURL,
+                                        isFromCurrentUser = message.normalizedSenderId == currentUserId
+                                    )
+                                } else if (message.content.contains("🎤 Audio message")) {
+                                    // Placeholder for audio message without URL
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp),
+                                        horizontalArrangement = if (message.normalizedSenderId == currentUserId) 
+                                            Arrangement.End else Arrangement.Start
+                                    ) {
+                                        Text(
+                                            text = "🎤 Audio message",
+                                            fontSize = 14.sp,
+                                            color = if (message.normalizedSenderId == currentUserId) 
+                                                Color.White else TextPrimary,
+                                            modifier = Modifier
+                                                .background(
+                                                    color = if (message.normalizedSenderId == currentUserId) 
+                                                        OrangeAccent else CardBackground,
+                                                    shape = RoundedCornerShape(16.dp)
+                                                )
+                                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                                        )
                                     }
-                                )
+                                } else {
+                                    MessageBubble(
+                                        message = message,
+                                        isFromCurrentUser = message.normalizedSenderId == currentUserId,
+                                        onEdit = {
+                                            editingMessageId = message.normalizedId
+                                            messageText = message.content
+                                            showEditDialog = true
+                                        },
+                                        onDelete = {
+                                            coroutineScope.launch {
+                                                viewModel.deleteMessage(message.normalizedId)
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -191,7 +298,18 @@ fun ChatViewScreen(
                         }
                     }
                 },
-                enabled = recipientId.isNotEmpty() // Always enable if we have recipient
+                enabled = recipientId.isNotEmpty(), // Always enable if we have recipient
+                isRecording = isRecording,
+                recordingTime = recordingTime,
+                onStartRecording = {
+                    if (hasAudioPermission) {
+                        startRecording()
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
+                onStopRecording = { stopRecording() },
+                onCancelRecording = { cancelRecording() }
             )
         }
     }
@@ -437,54 +555,157 @@ private fun MessageInput(
     text: String,
     onTextChange: (String) -> Unit,
     onSend: () -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
+    isRecording: Boolean = false,
+    recordingTime: Int = 0,
+    onStartRecording: () -> Unit = {},
+    onStopRecording: () -> Unit = {},
+    onCancelRecording: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = CardBackground,
         shadowElevation = 8.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Type a message...", color = TextSecondary) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = VetInputBackground,
-                    unfocusedContainerColor = VetInputBackground,
-                    focusedBorderColor = VetCanyon,
-                    unfocusedBorderColor = VetStroke,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
-                shape = RoundedCornerShape(20.dp),
-                maxLines = 4,
-                enabled = enabled
-            )
-            
-            IconButton(
-                onClick = onSend,
-                enabled = text.isNotBlank(), // Only check if text is not blank
+        if (isRecording) {
+            // Recording View (like iOS)
+            Row(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = if (enabled && text.isNotBlank()) VetCanyon else VetCanyon.copy(alpha = 0.4f),
-                        shape = CircleShape
-                    )
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "Send",
-                    tint = Color.White
+                // Waveform animation
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                ) {
+                    repeat(30) { index ->
+                        val infiniteTransition = rememberInfiniteTransition(label = "wave")
+                        val height by infiniteTransition.animateFloat(
+                            initialValue = 8f,
+                            targetValue = 30f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(500, easing = LinearEasing, delayMillis = index * 50),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "waveHeight"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(height.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color.Red)
+                        )
+                    }
+                }
+                
+                // Recording time
+                Text(
+                    text = formatRecordingTime(recordingTime),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary
                 )
+                
+                // Cancel button
+                IconButton(
+                    onClick = onCancelRecording,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(CardBackground, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                
+                // Stop/Send button
+                IconButton(
+                    onClick = onStopRecording,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(OrangeAccent, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Send",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        } else {
+            // Text Input View (like iOS)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                // Microphone button
+                IconButton(
+                    onClick = { if (text.isEmpty()) onStartRecording() },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = if (text.isEmpty()) "Record" else "Add",
+                        tint = OrangeAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Type a message...", color = TextSecondary) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = VetInputBackground,
+                        unfocusedContainerColor = VetInputBackground,
+                        focusedBorderColor = VetCanyon,
+                        unfocusedBorderColor = VetStroke,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    maxLines = 4,
+                    enabled = enabled
+                )
+                
+                IconButton(
+                    onClick = onSend,
+                    enabled = text.isNotBlank(),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = if (enabled && text.isNotBlank()) VetCanyon else VetCanyon.copy(alpha = 0.4f),
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Send",
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
+}
+
+private fun formatRecordingTime(seconds: Int): String {
+    val minutes = seconds / 60
+    val secs = seconds % 60
+    return String.format("%d:%02d", minutes, secs)
 }

@@ -570,6 +570,23 @@ private fun SubscriptionContent(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Refresh Status", fontSize = 16.sp)
                 }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Manual activation button for testing/localhost
+                OutlinedButton(
+                    onClick = { viewModel.activatePendingSubscription() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = OrangeAccent
+                    )
+                ) {
+                    Icon(Icons.Default.CheckCircle, "Activate")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Manually Activate Subscription", fontSize = 16.sp)
+                }
             }
             
             else -> {}
