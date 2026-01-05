@@ -152,25 +152,37 @@ class PetAIViewModel(
     }
 
     /**
-     * Generate reminders for a pet
+     * Generate reminders for a pet with calendar events merging
+     * iOS Reference: PetAIViewModel.swift generateHomeReminders (lines 467-547)
+     * Merges AI-generated reminders with calendar events
      */
-    fun generateReminders(petId: String) {
+    fun generateReminders(petId: String, petName: String = "", calendarEvents: List<tn.rifq_android.util.CalendarEvent> = emptyList()) {
         viewModelScope.launch {
             try {
-                // Check cache first
+                Log.d("PetAIViewModel", "🔔 generateReminders called for pet $petId")
+                
+                // Check cache first (for AI reminders only)
                 val cached = remindersCache[petId]
                 if (cached != null && System.currentTimeMillis() - cached.second < cacheTTL) {
-                    Log.d("PetAIViewModel", "Using cached reminders for pet $petId")
-                    updatePetReminders(petId, cached.first)
+                    Log.d("PetAIViewModel", "Using cached AI reminders for pet $petId")
+                    // Still merge with fresh calendar events
+                    val allReminders = mergeRemindersWithCalendar(cached.first, petName, calendarEvents)
+                    updatePetReminders(petId, allReminders)
                     return@launch
                 }
 
                 _isLoading.value = true
                 _error.value = null
 
+                Log.d("PetAIViewModel", "🌐 Calling backend AI service for reminders...")
                 val response = aiApi.getReminders(petId)
+                Log.d("PetAIViewModel", "✅ Received reminders response from backend")
+                Log.d("PetAIViewModel", "📋 Backend returned ${response.reminders.size} reminders")
                 
-                val reminders = response.reminders.map { reminder ->
+                // Convert backend reminders to PetReminder
+                val aiReminders = response.reminders.map { reminder ->
+                    Log.d("PetAIViewModel", "   - Reminder: ${reminder.title} - ${reminder.detail.take(50)}")
+                    
                     PetReminder(
                         id = UUID.randomUUID().toString(),
                         icon = reminder.icon,
@@ -181,17 +193,71 @@ class PetAIViewModel(
                     )
                 }
 
-                // Update cache
-                remindersCache[petId] = Pair(reminders, System.currentTimeMillis())
-                updatePetReminders(petId, reminders)
+                // Update cache with AI reminders
+                remindersCache[petId] = Pair(aiReminders, System.currentTimeMillis())
+                
+                // Merge with calendar events (iOS Reference: PetAIViewModel.swift lines 500-516)
+                val allReminders = mergeRemindersWithCalendar(aiReminders, petName, calendarEvents)
+                
+                updatePetReminders(petId, allReminders)
 
-                Log.d("PetAIViewModel", "Generated ${reminders.size} reminders for pet $petId")
+                Log.d("PetAIViewModel", "✅ Parsed ${allReminders.size} total reminders (${aiReminders.size} AI + ${allReminders.size - aiReminders.size} calendar)")
                 
             } catch (e: Exception) {
                 Log.e("PetAIViewModel", "Error generating reminders for pet $petId", e)
-                _error.value = "Failed to generate reminders: ${e.message}"
+                
+                // Try to use cached data even on error (iOS Reference: similar pattern)
+                val cached = remindersCache[petId]
+                if (cached != null) {
+                    Log.d("PetAIViewModel", "Using cached reminders due to error")
+                    val allReminders = mergeRemindersWithCalendar(cached.first, petName, calendarEvents)
+                    updatePetReminders(petId, allReminders)
+                } else {
+                    _error.value = "Failed to generate reminders: ${e.message}"
+                }
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Merge AI reminders with calendar events
+     * iOS Reference: PetAIViewModel.swift lines 500-516
+     */
+    private fun mergeRemindersWithCalendar(
+        aiReminders: List<PetReminder>,
+        petName: String,
+        calendarEvents: List<tn.rifq_android.util.CalendarEvent>
+    ): List<PetReminder> {
+        val now = System.currentTimeMillis()
+        
+        // Convert future calendar events to reminders (take max 3)
+        val calendarReminders = calendarEvents
+            .filter { it.startTime >= now }
+            .sortedBy { it.startTime }
+            .take(3)
+            .map { event ->
+                PetReminder(
+                    id = UUID.randomUUID().toString(),
+                    icon = "📅", // Calendar icon
+                    title = if (petName.isNotEmpty()) "$petName • ${event.title}" else event.title,
+                    detail = event.description.ifEmpty { "Calendar Event" },
+                    date = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("UTC")
+                    }.format(Date(event.startTime)),
+                    tint = Color(0xFFFF6B35) // Orange color for calendar events
+                )
+            }
+        
+        // Merge and sort by date
+        return (aiReminders + calendarReminders).sortedBy { reminder ->
+            try {
+                java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }.parse(reminder.date)?.time ?: Long.MAX_VALUE
+            } catch (e: Exception) {
+                Long.MAX_VALUE
             }
         }
     }
@@ -223,9 +289,40 @@ class PetAIViewModel(
     }
 
     /**
-     * Generate content for multiple pets with progressive loading (per-pet)
+     * Generate content for multiple pets with calendar integration
      * iOS Reference: HomeView.swift lines 437-503
      * Updates UI immediately after each pet's content is generated
+     */
+    fun generateContentForPets(
+        pets: List<Pair<String, String>>, // List of (petId, petName)
+        calendarEventsMap: Map<String, List<tn.rifq_android.util.CalendarEvent>> = emptyMap(),
+        silent: Boolean = true
+    ) {
+        viewModelScope.launch {
+            // Process each pet one by one for progressive loading
+            pets.forEachIndexed { index, (petId, petName) ->
+                try {
+                    // Generate tips first (updates UI immediately)
+                    generateTips(petId)
+                    
+                    // Generate status (updates UI immediately)
+                    generateStatus(petId)
+                    
+                    // Generate reminders with calendar events (updates UI immediately)
+                    val calendarEvents = calendarEventsMap[petId] ?: emptyList()
+                    generateReminders(petId, petName, calendarEvents)
+                    
+                    Log.d("PetAIViewModel", "✅ Processed pet ${index + 1}/${pets.size}: $petId")
+                } catch (e: Exception) {
+                    Log.e("PetAIViewModel", "⚠️ Failed to process pet $petId", e)
+                    // Continue with next pet even if this one fails
+                }
+            }
+        }
+    }
+    
+    /**
+     * Legacy method - kept for backward compatibility
      */
     fun generateContentForPets(petIds: List<String>, silent: Boolean = true) {
         viewModelScope.launch {

@@ -1,5 +1,6 @@
 package tn.rifq_android.ui.screens.home
 
+import android.util.Log
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -68,19 +69,30 @@ fun HomeScreen(
             // Load AI content for all pets with calendar events
             LaunchedEffect(state.pets) {
                 if (state.pets.isNotEmpty()) {
-                    // Request calendar permission if needed
+                    // Build calendar events map for each pet
+                    val calendarEventsMap = mutableMapOf<String, List<tn.rifq_android.util.CalendarEvent>>()
+                    
+                    // Load calendar events if permission granted
                     if (calendarManager.hasCalendarPermission()) {
-                        // Load calendar events for each pet before generating AI content
                         state.pets.forEach { pet ->
                             pet.id?.let { petId ->
-                                calendarManager.loadEventsForPet(petId)
+                                try {
+                                    val events = calendarManager.loadEventsForPet(petId)
+                                    calendarEventsMap[petId] = events
+                                } catch (e: Exception) {
+                                    Log.e("HomeScreen", "Failed to load calendar events for pet $petId", e)
+                                }
                             }
                         }
                     }
                     
-                    val petIds = state.pets.mapNotNull { it.id }
-                    if (petIds.isNotEmpty()) {
-                        aiViewModel.generateContentForPets(petIds, silent = true)
+                    // Generate AI content with calendar integration (iOS Reference: HomeView.swift lines 475-520)
+                    val petsWithNames = state.pets.mapNotNull { pet ->
+                        pet.id?.let { id -> id to pet.name }
+                    }
+                    
+                    if (petsWithNames.isNotEmpty()) {
+                        aiViewModel.generateContentForPets(petsWithNames, calendarEventsMap, silent = true)
                     }
                 }
             }

@@ -5,7 +5,7 @@ import androidx.compose.ui.unit.dp
 object Constants {
 
     object Api {
-        const val BASE_URL = "http://10.0.2.2:3000"
+        const val BASE_URL = "https://rifq.onrender.com"
         const val TIMEOUT_SECONDS = 30L
     }
 

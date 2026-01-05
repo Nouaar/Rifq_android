@@ -50,6 +50,7 @@ import tn.rifq_android.ui.screens.booking.BookingDetailScreen
 import tn.rifq_android.ui.screens.booking.BookingListScreen
 import tn.rifq_android.ui.screens.booking.BookingUpdateScreen
 import tn.rifq_android.ui.screens.calendar.AddCalendarEventScreen
+import tn.rifq_android.ui.screens.calendar.GeneralCalendarScreen
 import tn.rifq_android.ui.screens.calendar.PetCalendarScreen
 import tn.rifq_android.ui.screens.chat.ChatAIScreen
 import tn.rifq_android.ui.screens.findhub.FindHubScreen
@@ -360,7 +361,7 @@ fun MainScreen(
             }
 
             composable("calendar") {
-                CalendarScreen(navController = navController)
+                GeneralCalendarScreen(navController = navController)
             }
             
             // Pet Calendar Screen - Shows calendar for a specific pet
